@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Osiris Development</title>
+  <style>
+    :root {
+      --bg: #0b0b0f;
+      --panel: #16161d;
+      --panel-2: #20202a;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --orange: #ff7a1a;
+      --border: rgba(255, 122, 26, 0.25);
+      --danger: #ef4444;
+      --ok: #22c55e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(255, 122, 26, 0.16), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      padding: 24px;
+    }
+
+    .shell {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(22, 22, 29, 0.9);
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--orange);
+    }
+
+    h2 {
+      color: #ffb36b;
+      margin-top: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    a {
+      color: #ffb36b;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      background: rgba(22, 22, 29, 0.9);
+      margin-bottom: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(24,24,27,0.9);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 12px;
+      font: inherit;
+      outline: none;
+      margin: 8px 0;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.16);
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, #ff7a1a, #f97316);
+      color: #111;
+      font-weight: 900;
+      cursor: pointer;
+      margin: 4px 4px 4px 0;
+    }
+
+    button.secondary {
+      background: rgba(255, 122, 26, 0.14);
+      color: #ffb36b;
+      border: 1px solid var(--border);
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-radius: 16px;
+      padding: 14px;
+      background: #050507;
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #d4d4d8;
+      max-height: 620px;
+      overflow: auto;
+    }
+
+    .quick-files button {
+      font-size: 0.88rem;
+    }
+
+    @media (max-width: 850px) {
+      body { padding: 12px; }
+      header { flex-direction: column; align-items: flex-start; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Osiris Development</h1>
+        <div class="subtitle">Read-only project intelligence for building Osiris.</div>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        &nbsp; | &nbsp;
+        <a href="/chat.html">Chat</a>
+        &nbsp; | &nbsp;
+        <a href="/system.html">System</a>
+        &nbsp; | &nbsp;
+        <a href="/permissions.html">Permissions</a>
+        &nbsp; | &nbsp;
+        <a href="/approvals.html">Approvals</a>
+        &nbsp; | &nbsp;
+        <a href="/devices.html">Devices</a>
+      </nav>
+    </header>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>Project Actions</h2>
+        <button onclick="loadSummary()">Project Summary</button>
+        <button onclick="loadTree()">Project Tree</button>
+
+        <label class="subtitle">Tree Depth</label>
+        <input id="treeDepth" value="3" />
+
+        <h2>Read File</h2>
+        <input id="filePath" value="osiris-api/app/main.py" />
+        <button onclick="readFile()">Read File</button>
+
+        <div class="quick-files">
+          <button class="secondary" onclick="setFile('docker-compose.yml')">docker-compose.yml</button>
+          <button class="secondary" onclick="setFile('osiris-api/app/main.py')">main.py</button>
+          <button class="secondary" onclick="setFile('osiris-api/app/permissions.py')">permissions.py</button>
+          <button class="secondary" onclick="setFile('osiris-api/app/approvals.py')">approvals.py</button>
+          <button class="secondary" onclick="setFile('osiris-api/app/device_core.py')">device_core.py</button>
+          <button class="secondary" onclick="setFile('osiris-api/app/assistant_router.py')">assistant_router.py</button>
+          <button class="secondary" onclick="setFile('website/html/chat.html')">chat.html</button>
+          <button class="secondary" onclick="setFile('host-agent/host_agent.py')">host_agent.py</button>
+        </div>
+
+        <h2>Search Project</h2>
+        <input id="searchQuery" value="approval" />
+        <input id="searchLimit" value="25" />
+        <button onclick="searchProject()">Search</button>
+      </div>
+
+      <div class="panel">
+        <h2>Result</h2>
+        <pre id="resultBox">No result yet.</pre>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>Patch Preview</h2>
+        <p class="subtitle">Create a pending patch by pasting the full proposed file content.</p>
+
+        <label class="subtitle">Target File</label>
+        <input id="patchFilePath" value="scripts/patch-test.txt" />
+
+        <label class="subtitle">Reason</label>
+        <input id="patchReason" value="Manual patch from Development UI" />
+
+        <label class="subtitle">Proposed Full File Content</label>
+        <textarea id="patchContent" rows="10">Osiris patch test v3
+</textarea>
+
+        <button onclick="createPatch()">Create Patch Preview</button>
+        <button class="secondary" onclick="loadPendingPatches()">Refresh Pending Patches</button>
+      </div>
+
+      <div class="panel">
+        <h2>Pending Patches</h2>
+        <div id="patchesBox" class="subtitle">No patches loaded yet.</div>
+      </div>
+    </section>
+  
+    <section class="grid">
+      <div class="panel">
+        <h2>AI Patch Generator</h2>
+        <p class="subtitle">Ask the local coding model to generate a pending patch. Review before applying.</p>
+
+        <label class="subtitle">Target File</label>
+        <input id="aiPatchFilePath" value="scripts/patch-test.txt" />
+
+        <label class="subtitle">Instruction</label>
+        <textarea id="aiPatchInstruction" rows="6">Change this file to say exactly: Osiris AI patch generator works from the browser</textarea>
+
+        <label class="subtitle">Model</label>
+        <input id="aiPatchModel" value="qwen2.5-coder:7b" />
+
+        <button onclick="generateAIPatch()">Generate AI Patch</button>
+      </div>
+
+      <div class="panel">
+        <h2>AI Patch Notes</h2>
+        <p class="subtitle">
+          This does not apply changes automatically. It creates a pending patch that you can review, apply, or deny.
+        </p>
+      </div>
+    </section>
+
+  
+    <section class="grid">
+      <div class="panel">
+        <h2>Rollback Center</h2>
+        <p class="subtitle">Restore files from patch backups. Restores create a pre-restore backup first.</p>
+        <button onclick="loadPatchBackups()">Refresh Backups</button>
+      </div>
+
+      <div class="panel">
+        <h2>Patch Backups</h2>
+        <div id="backupsBox" class="subtitle">No backups loaded yet.</div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const API_BASE = "http://localhost:8000";
+    const resultBox = document.getElementById("resultBox");
+    const patchesBox = document.getElementById("patchesBox");
+    const backupsBox = document.getElementById("backupsBox");
+
+    function show(data) {
+      if (typeof data === "string") {
+        resultBox.textContent = data;
+      } else {
+        resultBox.textContent = JSON.stringify(data, null, 2);
+      }
+    }
+
+    function setFile(path) {
+      document.getElementById("filePath").value = path;
+    }
+
+    async function apiFetch(path, options = {}) {
+      const res = await fetch(`${API_BASE}${path}`, options);
+      const data = await res.json();
+
+      if (!res.ok) {
+        show(data);
+        throw new Error(data.detail || "API request failed");
+      }
+
+      return data;
+    }
+
+    async function loadSummary() {
+      const data = await apiFetch("/dev/project/summary");
+      show(data);
+    }
+
+    async function loadTree() {
+      const depth = document.getElementById("treeDepth").value || "3";
+      const data = await apiFetch(`/dev/tree?max_depth=${encodeURIComponent(depth)}`);
+      show(data);
+    }
+
+    async function readFile() {
+      const path = document.getElementById("filePath").value.trim();
+      const data = await apiFetch(`/dev/file?path=${encodeURIComponent(path)}`);
+      show(data.content || data);
+    }
+
+    async function searchProject() {
+      const query = document.getElementById("searchQuery").value.trim();
+      const maxResults = Number(document.getElementById("searchLimit").value || 25);
+
+      const data = await apiFetch("/dev/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          query,
+          max_results: maxResults
+        })
+      });
+
+      show(data);
+    }
+
+    async function createPatch() {
+      const filePath = document.getElementById("patchFilePath").value.trim();
+      const reason = document.getElementById("patchReason").value.trim();
+      const proposedContent = document.getElementById("patchContent").value;
+
+      const data = await apiFetch("/patches/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          file_path: filePath,
+          proposed_content: proposedContent,
+          reason
+        })
+      });
+
+      show(data);
+      await loadPendingPatches();
+    }
+
+    function isServiceImpactingFile(filePath) {
+      return (
+        filePath === "docker-compose.yml" ||
+        filePath === "host-agent/host_agent.py" ||
+        filePath.startsWith("host-agent/") ||
+        filePath.startsWith("osiris-api/app/")
+      );
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function renderPatchResult(data) {
+      if (data.status === "approval_required") {
+        return `
+          <div class="panel" style="background: rgba(250,204,21,0.10); border-color: rgba(250,204,21,0.35);">
+            <h3>Approval Required</h3>
+            <div class="subtitle">${escapeHtml(data.message || "This patch requires approval.")}</div>
+            <div class="subtitle">Approval ID: ${escapeHtml(data.approval_id || "unknown")}</div>
+            <div class="subtitle">Tool: ${escapeHtml(data.approval?.tool_name || "unknown")}</div>
+            <div class="subtitle">Target: ${escapeHtml(data.approval?.target || "unknown")}</div>
+            <p class="subtitle">Open the Approvals page to approve or deny this action.</p>
+            <button onclick="location.href='/approvals.html'">Open Approvals</button>
+          </div>
+        `;
+      }
+
+      const validation = data.validation || {};
+      const postApply = data.post_apply_check || {};
+      const affected = data.affected_service || {};
+
+      let affectedHtml = "";
+
+      if (affected.service) {
+        const actions = affected.recommended_actions || [];
+        const notes = affected.notes || [];
+
+        affectedHtml = `
+          <div class="panel" style="background: rgba(255,122,26,0.10); border-color: rgba(255,122,26,0.35);">
+            <h3>Affected Service</h3>
+            <div class="subtitle">Service: ${escapeHtml(affected.service)}</div>
+            <div class="subtitle">Risk: ${escapeHtml(affected.risk || "unknown")}</div>
+            ${notes.length ? `<h4>Notes</h4><ul>${notes.map(note => `<li>${escapeHtml(note)}</li>`).join("")}</ul>` : ""}
+            ${actions.length ? `<h4>Recommended Checks</h4><pre>${escapeHtml(actions.join("\n"))}</pre>` : ""}
+          </div>
+        `;
+      }
+
+      return `
+        <div class="panel" style="background: rgba(34,197,94,0.10); border-color: rgba(34,197,94,0.35);">
+          <h3>${escapeHtml(data.message || "Patch apply completed.")}</h3>
+          <div class="subtitle">File: ${escapeHtml(data.file_path || "unknown")}</div>
+          <div class="subtitle">Backup: ${escapeHtml(data.backup_path || "none")}</div>
+
+          <h4>Validation</h4>
+          <div class="subtitle">OK: ${escapeHtml(validation.ok)}</div>
+          <ul>
+            ${(validation.checks || []).map(item => `<li>${escapeHtml(item)}</li>`).join("")}
+            ${(validation.errors || []).map(item => `<li>ERROR: ${escapeHtml(item)}</li>`).join("")}
+          </ul>
+
+          <h4>Post-Apply Check</h4>
+          <div class="subtitle">OK: ${escapeHtml(postApply.ok)}</div>
+          <ul>
+            ${(postApply.checks || []).map(item => `<li>${escapeHtml(item)}</li>`).join("")}
+            ${(postApply.errors || []).map(item => `<li>ERROR: ${escapeHtml(item)}</li>`).join("")}
+          </ul>
+        </div>
+        ${affectedHtml}
+      `;
+    }
+
+    async function loadPendingPatches() {
+      const data = await apiFetch("/patches/pending");
+
+      if (!data.patches || data.patches.length === 0) {
+        patchesBox.innerHTML = "No pending patches.";
+        show(data);
+        return;
+      }
+
+      patchesBox.innerHTML = "";
+
+      data.patches.forEach(patch => {
+        const div = document.createElement("div");
+        div.className = "panel";
+        div.style.background = "rgba(32,32,42,0.75)";
+
+        const serviceWarning = isServiceImpactingFile(patch.file_path)
+          ? `<div class="subtitle" style="color:#facc15;">⚠️ Service-impacting file. Apply requires approval.</div>`
+          : `<div class="subtitle" style="color:#22c55e;">Normal patch. Can apply directly.</div>`;
+
+        div.innerHTML = `
+          <h3>${escapeHtml(patch.file_path)}</h3>
+          <div class="subtitle">ID: ${escapeHtml(patch.id)}</div>
+          <div class="subtitle">Status: ${escapeHtml(patch.status || "pending")}</div>
+          <div class="subtitle">Reason: ${escapeHtml(patch.reason || "none")}</div>
+          ${serviceWarning}
+          <pre>${escapeHtml(patch.diff)}</pre>
+          <button onclick="applyPatch('${patch.id}')">Apply Patch</button>
+          <button class="secondary" onclick="viewPatch('${patch.id}')">Details</button>
+          <button class="secondary" onclick="denyPatch('${patch.id}')">Deny Patch</button>
+        `;
+
+        patchesBox.appendChild(div);
+      });
+
+      show(data);
+    }
+
+    async function viewPatch(id) {
+      const data = await apiFetch(`/patches/${id}`);
+      show(data);
+    }
+
+    async function applyPatch(id) {
+      const data = await apiFetch(`/patches/${id}/apply`, {
+        method: "POST"
+      });
+
+      show(data);
+
+      const resultDiv = document.createElement("div");
+      resultDiv.innerHTML = renderPatchResult(data);
+      patchesBox.prepend(resultDiv);
+
+      await loadPendingPatches();
+    }
+
+    async function denyPatch(id) {
+      const data = await apiFetch(`/patches/${id}/deny`, {
+        method: "POST"
+      });
+
+      show(data);
+      await loadPendingPatches();
+    }
+
+
+    async function generateAIPatch() {
+      const filePath = document.getElementById("aiPatchFilePath").value.trim();
+      const instruction = document.getElementById("aiPatchInstruction").value.trim();
+      const model = document.getElementById("aiPatchModel").value.trim() || "qwen2.5-coder:7b";
+
+      show("Generating AI patch. This may take a little while...");
+
+      const data = await apiFetch("/patches/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          file_path: filePath,
+          instruction,
+          model
+        })
+      });
+
+      show(data);
+      await loadPendingPatches();
+    }
+
+
+
+    async function loadPatchBackups() {
+      const data = await apiFetch("/backups/patches");
+
+      if (!data.backups || data.backups.length === 0) {
+        backupsBox.innerHTML = "No patch backups found.";
+        show(data);
+        return;
+      }
+
+      backupsBox.innerHTML = "";
+
+      data.backups.forEach(backup => {
+        const div = document.createElement("div");
+        div.className = "panel";
+        div.style.background = "rgba(32,32,42,0.75)";
+
+        const modified = backup.modified_at
+          ? new Date(backup.modified_at * 1000).toLocaleString()
+          : "unknown";
+
+        div.innerHTML = `
+          <h3>${backup.original_path}</h3>
+          <div class="subtitle">Backup: ${backup.backup_path}</div>
+          <div class="subtitle">Size: ${backup.size_bytes} bytes</div>
+          <div class="subtitle">Modified: ${modified}</div>
+          <button onclick="restorePatchBackup('${backup.backup_path}')">Restore Backup</button>
+        `;
+
+        backupsBox.appendChild(div);
+      });
+
+      show(data);
+    }
+
+    async function restorePatchBackup(backupPath) {
+      const data = await apiFetch("/backups/restore", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          backup_path: backupPath
+        })
+      });
+
+      show(data);
+      await loadPatchBackups();
+    }
+
+
+    loadSummary();
+    loadPendingPatches();
+    loadPatchBackups();
+  </script>
+</body>
+</html>

@@ -1,0 +1,219 @@
+{
+  "mode": "normal",
+  "master_override": true,
+  "action_logging": true,
+  "tools": {
+    "status_checks": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "system"
+    },
+    "summaries": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "general"
+    },
+    "log_reading": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "system"
+    },
+    "memory_search": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "memory"
+    },
+    "memory_save": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "memory"
+    },
+    "code_explain": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "development"
+    },
+    "code_review": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "development"
+    },
+    "project_file_read": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "development"
+    },
+    "project_search": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "development"
+    },
+    "generate_code": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "development"
+    },
+    "create_file": {
+      "enabled": true,
+      "approval_required": true,
+      "risk": "medium",
+      "category": "development"
+    },
+    "edit_file": {
+      "enabled": true,
+      "approval_required": true,
+      "risk": "medium",
+      "category": "development"
+    },
+    "delete_file": {
+      "enabled": true,
+      "approval_required": true,
+      "risk": "high",
+      "category": "development"
+    },
+    "run_script": {
+      "enabled": true,
+      "approval_required": true,
+      "risk": "high",
+      "category": "development"
+    },
+    "install_dependency": {
+      "enabled": true,
+      "approval_required": true,
+      "risk": "medium",
+      "category": "development"
+    },
+    "camera_stream": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "camera"
+    },
+    "camera_snapshot": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "camera"
+    },
+    "camera_recording": {
+      "enabled": true,
+      "approval_required": true,
+      "risk": "medium",
+      "category": "camera"
+    },
+    "camera_remote_access": {
+      "enabled": false,
+      "approval_required": true,
+      "risk": "high",
+      "category": "camera"
+    },
+    "robot_status": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "robotics"
+    },
+    "robot_sensor_read": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "robotics"
+    },
+    "robot_led_control": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "robotics"
+    },
+    "robot_servo_control": {
+      "enabled": true,
+      "approval_required": true,
+      "risk": "medium",
+      "category": "robotics"
+    },
+    "robot_motor_control": {
+      "enabled": true,
+      "approval_required": true,
+      "risk": "high",
+      "category": "robotics"
+    },
+    "robot_drive": {
+      "enabled": true,
+      "approval_required": true,
+      "risk": "high",
+      "category": "robotics"
+    },
+    "robot_autonomous_mode": {
+      "enabled": false,
+      "approval_required": true,
+      "risk": "critical",
+      "category": "robotics"
+    },
+    "robot_emergency_stop": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "safety",
+      "category": "robotics",
+      "always_allowed": true
+    },
+    "security_recon_plan": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "security"
+    },
+    "security_report_generate": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "security"
+    },
+    "external_network_scan": {
+      "enabled": true,
+      "approval_required": true,
+      "risk": "high",
+      "category": "pentest"
+    },
+    "legal_pentest_action": {
+      "enabled": true,
+      "approval_required": true,
+      "risk": "critical",
+      "category": "pentest"
+    },
+    "credential_audit_authorized": {
+      "enabled": true,
+      "approval_required": true,
+      "risk": "critical",
+      "category": "pentest"
+    },
+    "crypto_wallet_transfer": {
+      "enabled": true,
+      "approval_required": true,
+      "double_confirmation": true,
+      "risk": "critical",
+      "category": "finance"
+    },
+    "docker_status": {
+      "enabled": true,
+      "approval_required": false,
+      "risk": "low",
+      "category": "system"
+    }
+  },
+  "pentest_mode": {
+    "enabled": false,
+    "scope_required": true,
+    "scope_file": "/app/config/pentest_scope.json",
+    "log_every_command": true
+  }
+}

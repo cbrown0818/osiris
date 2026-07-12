@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Osiris Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050505;
+      --panel: rgba(12, 12, 14, 0.94);
+      --panel-2: rgba(24, 24, 27, 0.9);
+      --orange: #ff7a1a;
+      --orange-soft: rgba(255, 122, 26, 0.16);
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --border: rgba(255, 122, 26, 0.24);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(255, 122, 26, 0.18), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(127, 29, 29, 0.32), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .shell {
+      width: min(1100px, 100%);
+      height: min(820px, calc(100vh - 48px));
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background: var(--panel);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.72);
+      overflow: hidden;
+    }
+
+    header {
+      padding: 22px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      background: rgba(5, 5, 5, 0.55);
+    }
+
+    .eyebrow {
+      color: var(--orange);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.55rem;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: #86efac;
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.22);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 18px #22c55e;
+    }
+
+    #messages {
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .msg {
+      max-width: 82%;
+      padding: 14px 16px;
+      border-radius: 18px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .user {
+      align-self: flex-end;
+      background: var(--orange-soft);
+      border: 1px solid var(--border);
+    }
+
+    .assistant {
+      align-self: flex-start;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-top: 8px;
+    }
+
+    form {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      border-top: 1px solid var(--border);
+      background: rgba(5, 5, 5, 0.55);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 52px;
+      max-height: 160px;
+      resize: vertical;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(24, 24, 27, 0.9);
+      color: var(--text);
+      border-radius: 18px;
+      padding: 14px 16px;
+      font: inherit;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.16);
+    }
+
+    button {
+      border: 0;
+      border-radius: 18px;
+      padding: 0 22px;
+      background: linear-gradient(135deg, #ff7a1a, #f97316);
+      color: #111;
+      font-weight: 900;
+      cursor: pointer;
+      min-width: 110px;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 12px 18px;
+      border-top: 1px solid rgba(255, 122, 26, 0.18);
+      background: rgba(5, 5, 5, 0.42);
+    }
+
+    .controls label {
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    select {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(24, 24, 27, 0.9);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font: inherit;
+      outline: none;
+      min-width: 220px;
+    }
+
+    select:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.16);
+    }
+
+    .small-action {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: rgba(255, 122, 26, 0.12);
+      color: #ffb36b;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 12px; }
+      .shell { height: calc(100vh - 24px); border-radius: 20px; }
+      header { align-items: flex-start; flex-direction: column; }
+      .msg { max-width: 100%; }
+      form { grid-template-columns: 1fr; }
+      button { min-height: 48px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <div class="eyebrow">Memory-Aware Local AI</div>
+        <h1>Osiris Chat</h1>
+      </div>
+      <div class="status">
+        <span class="dot"></span>
+        Online
+      </div>
+    </header>
+
+    <section id="messages">
+      <div class="msg assistant">
+        Osiris is online. Ask me what hardware I am running on.
+        <div class="meta">Connected to localhost:8000/chat</div>
+      </div>
+    </section>
+
+    <div class="controls">
+      <label for="modelSelect">Model</label>
+      <select id="modelSelect">
+        <option value="llama3.1:8b">llama3.1:8b</option>
+      </select>
+      <button class="small-action" id="newChatBtn" type="button">New Chat</button>
+      <button class="small-action" type="button" onclick="window.location.href='/permissions.html'">Permissions</button>
+      <button class="small-action" type="button" onclick="window.location.href='/devices.html'">Devices</button>
+      <button class="small-action" type="button" onclick="window.location.href='/approvals.html'">Approvals</button>
+    </div>
+
+    <form id="chatForm">
+      <textarea id="prompt" placeholder="Message Osiris..." required></textarea>
+      <button id="sendBtn" type="submit">Send</button>
+    </form>
+  </main>
+
+  <script>
+    const API_BASE = "http://localhost:8000";
+
+    const form = document.getElementById("chatForm");
+    const promptInput = document.getElementById("prompt");
+    const messages = document.getElementById("messages");
+    const sendBtn = document.getElementById("sendBtn");
+    const modelSelect = document.getElementById("modelSelect");
+    const newChatBtn = document.getElementById("newChatBtn");
+
+    function addMessage(role, content, meta = "") {
+      const div = document.createElement("div");
+      div.className = `msg ${role}`;
+      div.textContent = content;
+
+      if (meta) {
+        const metaDiv = document.createElement("div");
+        metaDiv.className = "meta";
+        metaDiv.textContent = meta;
+        div.appendChild(metaDiv);
+      }
+
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function getConversationId() {
+      return localStorage.getItem("osiris_conversation_id");
+    }
+
+    function setConversationId(id) {
+      if (id) {
+        localStorage.setItem("osiris_conversation_id", id);
+      }
+    }
+
+    async function sendMessage(message) {
+      const conversationId = getConversationId();
+
+      const payload = {
+        message,
+        model: modelSelect.value || "llama3.1:8b"
+      };
+
+      if (conversationId) {
+        payload.conversation_id = conversationId;
+      }
+
+      const response = await fetch(`${API_BASE}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      setConversationId(data.conversation_id);
+      return data;
+    }
+
+    function isChatModel(modelName) {
+      const name = String(modelName || "").toLowerCase();
+
+      const blocked = [
+        "embed",
+        "embedding",
+        "nomic-embed",
+        "all-minilm"
+      ];
+
+      return !blocked.some(term => name.includes(term));
+    }
+
+    async function loadModels() {
+      try {
+        const response = await fetch("http://localhost:8000/system/status");
+        if (!response.ok) throw new Error(`API returned ${response.status}`);
+
+        const data = await response.json();
+        const models = data?.ollama?.models || [];
+        const chatModels = models
+          .map(model => model.name)
+          .filter(isChatModel);
+
+        if (!chatModels.length) {
+          return;
+        }
+
+        const savedModel = localStorage.getItem("osiris_selected_model");
+
+        modelSelect.innerHTML = "";
+
+        chatModels.forEach(name => {
+          const option = document.createElement("option");
+          option.value = name;
+          option.textContent = name;
+          modelSelect.appendChild(option);
+        });
+
+        if (savedModel && chatModels.includes(savedModel)) {
+          modelSelect.value = savedModel;
+        } else {
+          modelSelect.value = chatModels[0];
+          localStorage.setItem("osiris_selected_model", chatModels[0]);
+        }
+      } catch (error) {
+        console.warn("Could not load models:", error);
+      }
+    }
+
+    modelSelect.addEventListener("change", () => {
+      localStorage.setItem("osiris_selected_model", modelSelect.value);
+    });
+
+    newChatBtn.addEventListener("click", () => {
+      localStorage.removeItem("osiris_conversation_id");
+      messages.innerHTML = "";
+      addMessage(
+        "assistant",
+        "New conversation started. Long-term memory is still available, but this chat thread is fresh.",
+        `Model: ${modelSelect.value}`
+      );
+      promptInput.focus();
+    });
+
+    loadModels();
+
+    
+    async function tryAssistantCommand(message) {
+      const res = await fetch(`${API_BASE}/assistant/command`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        return {
+          type: "chat",
+          error: data.detail || "assistant command failed"
+        };
+      }
+
+      return data;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const message = promptInput.value.trim();
+      if (!message) return;
+
+      addMessage("user", message);
+      promptInput.value = "";
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Thinking...";
+
+      try {
+        const commandResult = await tryAssistantCommand(message);
+
+        if (commandResult?.type === "tool_result") {
+          addMessage(
+            "assistant",
+            commandResult.answer || "Tool command completed.",
+            `Tool: ${commandResult.command}`
+          );
+          return;
+        }
+
+        const data = await sendMessage(message);
+        const content = data?.message?.content || "No response content returned.";
+        const memoryCount = data?.osiris_memory?.count ?? 0;
+
+        const conversationId = data?.conversation_id || "none";
+        const recentCount = data?.conversation_history?.recent_message_count ?? 0;
+
+        addMessage(
+          "assistant",
+          content,
+          `Memory results used: ${memoryCount} • Prior messages used: ${recentCount} • Conversation: ${conversationId.slice(0, 8)}`
+        );
+      } catch (error) {
+        addMessage("assistant", `Error: ${error.message}`);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Send";
+        promptInput.focus();
+      }
+    });
+
+    promptInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+    });
+  </script>
+</body>
+</html>

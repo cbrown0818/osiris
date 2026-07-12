@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "devices": {
+    "pi_robot_1": {
+      "name": "Osiris Robot Dev Unit",
+      "type": "robot",
+      "platform": "raspberry_pi",
+      "enabled": true,
+      "communication": {
+        "method": "mqtt",
+        "command_topic": "osiris/pi_robot_1/command",
+        "status_topic": "osiris/pi_robot_1/status",
+        "event_topic": "osiris/pi_robot_1/events"
+      },
+      "capabilities": [
+        "device.status",
+        "robot.status",
+        "robot.emergency_stop",
+        "robot.led",
+        "robot.sensor.read",
+        "robot.drive",
+        "robot.turn",
+        "gpio.read",
+        "gpio.write",
+        "camera.snapshot"
+      ],
+      "safety": {
+        "max_motor_speed_percent": 30,
+        "max_drive_duration_seconds": 3,
+        "require_approval_for_movement": true,
+        "emergency_stop_enabled": true,
+        "autonomous_mode_enabled": false,
+        "deadman_timeout_seconds": 5
+      }
+    },
+    "pi_camera_1": {
+      "name": "Workshop Camera",
+      "type": "camera",
+      "platform": "raspberry_pi",
+      "enabled": true,
+      "communication": {
+        "method": "mqtt",
+        "command_topic": "osiris/pi_camera_1/command",
+        "status_topic": "osiris/pi_camera_1/status",
+        "event_topic": "osiris/pi_camera_1/events"
+      },
+      "capabilities": [
+        "device.status",
+        "camera.stream",
+        "camera.snapshot",
+        "camera.motion_detect",
+        "camera.event_log"
+      ],
+      "safety": {
+        "requires_approval_for_recording": true,
+        "allow_remote_access": false
+      }
+    }
+  }
+}

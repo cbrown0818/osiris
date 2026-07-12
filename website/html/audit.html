@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Osiris Audit Log</title>
+  <style>
+    :root {
+      --bg: #0b0b0f;
+      --panel: #16161d;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --orange: #ff7a1a;
+      --border: rgba(255, 122, 26, 0.25);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(255, 122, 26, 0.18), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      padding: 24px;
+    }
+
+    .shell {
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    header, .panel {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(22, 22, 29, 0.92);
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--orange);
+    }
+
+    h2, h3 {
+      color: #ffb36b;
+      margin-top: 0;
+    }
+
+    a {
+      color: #ffb36b;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    button, input {
+      border-radius: 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    button {
+      border: 0;
+      background: linear-gradient(135deg, #ff7a1a, #f97316);
+      color: #111;
+      font-weight: 900;
+      cursor: pointer;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+
+    input {
+      background: #0f0f15;
+      color: var(--text);
+      width: 120px;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-radius: 16px;
+      padding: 14px;
+      background: #050507;
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #d4d4d8;
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    .event {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 14px;
+      background: rgba(32, 32, 42, 0.72);
+    }
+
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.85rem;
+      font-weight: 900;
+      background: rgba(255,122,26,0.16);
+      color: #ffb36b;
+      border: 1px solid rgba(255,122,26,0.25);
+    }
+
+    @media (max-width: 850px) {
+      body { padding: 12px; }
+      header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Osiris Audit Log</h1>
+        <div class="subtitle">Recent system, device, tool, and development actions.</div>
+      </div>
+      <nav>
+        <a href="/">Mission Control</a>
+        &nbsp; | &nbsp;
+        <a href="/chat.html">Chat</a>
+        &nbsp; | &nbsp;
+        <a href="/development.html">Development</a>
+        &nbsp; | &nbsp;
+        <a href="/approvals.html">Approvals</a>
+        &nbsp; | &nbsp;
+        <a href="/security.html">Security</a>
+      </nav>
+    </header>
+
+    <section class="panel">
+      <label class="subtitle">Limit</label>
+      <input id="limitInput" value="100" />
+      <button onclick="loadAudit()">Refresh Audit Log</button>
+    </section>
+
+    <section class="panel">
+      <h2>Events</h2>
+      <div id="eventsBox" class="subtitle">No events loaded yet.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Raw Data</h2>
+      <pre id="rawBox">No data loaded yet.</pre>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "http://localhost:8000";
+    const eventsBox = document.getElementById("eventsBox");
+    const rawBox = document.getElementById("rawBox");
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    async function loadAudit() {
+      const limit = document.getElementById("limitInput").value || "100";
+
+      eventsBox.innerHTML = "Loading...";
+      rawBox.textContent = "Loading...";
+
+      try {
+        const res = await fetch(`${API_BASE}/audit/events?limit=${encodeURIComponent(limit)}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || "Failed to load audit events.");
+        }
+
+        rawBox.textContent = JSON.stringify(data, null, 2);
+
+        if (!data.events || data.events.length === 0) {
+          eventsBox.innerHTML = "No audit events found.";
+          return;
+        }
+
+        eventsBox.innerHTML = "";
+
+        data.events.slice().reverse().forEach(event => {
+          const div = document.createElement("div");
+          div.className = "event";
+
+          const action = event.action || event.tool_name || event.type || event.command || "event";
+          const time = event.timestamp || event.created_at || event.time || "unknown time";
+          const target = event.target || event.file_path || event.device_id || "";
+
+          div.innerHTML = `
+            <h3><span class="badge">${escapeHtml(action)}</span></h3>
+            <div class="subtitle">Time: ${escapeHtml(time)}</div>
+            ${target ? `<div class="subtitle">Target: ${escapeHtml(target)}</div>` : ""}
+            <pre>${escapeHtml(JSON.stringify(event, null, 2))}</pre>
+          `;
+
+          eventsBox.appendChild(div);
+        });
+      } catch (err) {
+        eventsBox.innerHTML = `<span style="color:#ef4444;">${escapeHtml(err)}</span>`;
+        rawBox.textContent = String(err);
+      }
+    }
+
+    loadAudit();
+  </script>
+</body>
+</html>

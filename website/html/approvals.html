@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Osiris Approvals</title>
+  <style>
+    :root {
+      --bg: #0b0b0f;
+      --panel: #16161d;
+      --panel-2: #20202a;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --orange: #ff7a1a;
+      --border: rgba(255, 122, 26, 0.25);
+      --danger: #ef4444;
+      --ok: #22c55e;
+      --warn: #facc15;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(255, 122, 26, 0.16), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      padding: 24px;
+    }
+
+    .shell {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(22, 22, 29, 0.9);
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--orange);
+    }
+
+    h2 {
+      color: #ffb36b;
+      margin-top: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    a {
+      color: #ffb36b;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      background: rgba(22, 22, 29, 0.9);
+      margin-bottom: 18px;
+    }
+
+    .approval-card {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(32,32,42,0.75);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .approval-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .approval-title {
+      font-size: 1.2rem;
+      color: #ffb36b;
+      font-weight: 900;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 5px 9px;
+      margin: 3px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 800;
+    }
+
+    .risk-low { color: var(--ok); }
+    .risk-medium { color: var(--warn); }
+    .risk-high, .risk-critical { color: var(--danger); }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, #ff7a1a, #f97316);
+      color: #111;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    button.danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    button.secondary {
+      background: rgba(255, 122, 26, 0.14);
+      color: #ffb36b;
+      border: 1px solid var(--border);
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-radius: 16px;
+      padding: 14px;
+      background: #050507;
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #d4d4d8;
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    @media (max-width: 850px) {
+      body { padding: 12px; }
+      header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Osiris Approvals</h1>
+        <div class="subtitle">Review actions that require Master approval.</div>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        &nbsp; | &nbsp;
+        <a href="/chat.html">Chat</a>
+        &nbsp; | &nbsp;
+        <a href="/system.html">System</a>
+        &nbsp; | &nbsp;
+        <a href="/permissions.html">Permissions</a>
+        &nbsp; | &nbsp;
+        <a href="/devices.html">Devices</a>
+      </nav>
+    </header>
+
+    <section class="panel">
+      <button id="refreshBtn">Refresh Pending Approvals</button>
+      <span id="statusText" class="subtitle"></span>
+    </section>
+
+    <section class="panel">
+      <h2>Pending Approvals</h2>
+      <div id="approvalsBox"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Last Result</h2>
+      <pre id="resultBox">No action yet.</pre>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "http://localhost:8000";
+
+    const refreshBtn = document.getElementById("refreshBtn");
+    const statusText = document.getElementById("statusText");
+    const approvalsBox = document.getElementById("approvalsBox");
+    const resultBox = document.getElementById("resultBox");
+
+    function showResult(data) {
+      resultBox.textContent = JSON.stringify(data, null, 2);
+    }
+
+    function riskClass(risk) {
+      return `risk-${risk || "unknown"}`;
+    }
+
+    async function apiFetch(path, options = {}) {
+      const res = await fetch(`${API_BASE}${path}`, options);
+      const data = await res.json();
+
+      if (!res.ok) {
+        showResult(data);
+        throw new Error(data.detail || "API request failed");
+      }
+
+      return data;
+    }
+
+    async function loadApprovals() {
+      statusText.textContent = " Loading...";
+      approvalsBox.innerHTML = "";
+
+      try {
+        const data = await apiFetch("/approvals/pending");
+        showResult(data);
+
+        if (!data.approvals || data.approvals.length === 0) {
+          approvalsBox.innerHTML = "<p class='subtitle'>No pending approvals.</p>";
+          statusText.textContent = " No pending approvals.";
+          return;
+        }
+
+        data.approvals.forEach(item => {
+          const risk = item.permission?.risk || "unknown";
+          const card = document.createElement("div");
+          card.className = "approval-card";
+
+          card.innerHTML = `
+            <div class="approval-top">
+              <div>
+                <div class="approval-title">${item.tool_name}</div>
+                <span class="pill">${item.id}</span>
+                <span class="pill ${riskClass(risk)}">risk: ${risk}</span>
+                <span class="pill">target: ${item.target || "none"}</span>
+                <span class="pill">action: ${item.action || "none"}</span>
+              </div>
+            </div>
+
+            <pre>${JSON.stringify(item.params, null, 2)}</pre>
+
+            <div class="actions">
+              <button onclick="approve('${item.id}')">Approve & Execute</button>
+              <button class="danger" onclick="deny('${item.id}')">Deny</button>
+              <button class="secondary" onclick="loadOne('${item.id}')">Details</button>
+            </div>
+          `;
+
+          approvalsBox.appendChild(card);
+        });
+
+        statusText.textContent = ` ${data.count} pending approval(s).`;
+      } catch (err) {
+        statusText.textContent = " Error.";
+        approvalsBox.innerHTML = `<pre>${String(err)}</pre>`;
+      }
+    }
+
+    async function approve(id) {
+      const data = await apiFetch(`/approvals/${id}/approve`, {
+        method: "POST"
+      });
+
+      showResult(data);
+      await loadApprovals();
+    }
+
+    async function deny(id) {
+      const data = await apiFetch(`/approvals/${id}/deny`, {
+        method: "POST"
+      });
+
+      showResult(data);
+      await loadApprovals();
+    }
+
+    async function loadOne(id) {
+      const data = await apiFetch(`/approvals/${id}`);
+      showResult(data);
+    }
+
+    refreshBtn.addEventListener("click", loadApprovals);
+    loadApprovals();
+  </script>
+</body>
+</html>

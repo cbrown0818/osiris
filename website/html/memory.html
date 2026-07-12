@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Osiris Memory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050505;
+      --panel: rgba(12, 12, 14, 0.94);
+      --panel-2: rgba(24, 24, 27, 0.9);
+      --orange: #ff7a1a;
+      --orange-soft: rgba(255, 122, 26, 0.16);
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --border: rgba(255, 122, 26, 0.24);
+      --green: #22c55e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(255, 122, 26, 0.18), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(127, 29, 29, 0.32), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 24px;
+    }
+
+    .shell {
+      width: min(1200px, 100%);
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background: var(--panel);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.72);
+      overflow: hidden;
+    }
+
+    header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      background: rgba(5, 5, 5, 0.55);
+    }
+
+    .eyebrow {
+      color: var(--orange);
+      font-size: 0.75rem;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1, h2 {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+    }
+
+    a {
+      color: #ffb36b;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .content {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .card {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: var(--panel-2);
+      border-radius: 22px;
+      padding: 18px;
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      margin: 12px 0 7px;
+      font-size: 0.9rem;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(5,5,5,0.5);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font: inherit;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 130px;
+      resize: vertical;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.14);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 140px;
+      gap: 12px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #ff7a1a, #f97316);
+      color: #111;
+      font-weight: 900;
+      cursor: pointer;
+      margin-top: 14px;
+    }
+
+    button.secondary {
+      background: rgba(255, 122, 26, 0.12);
+      color: #ffb36b;
+      border: 1px solid var(--border);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+
+    .status {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      white-space: pre-wrap;
+    }
+
+    .memory {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(5,5,5,0.38);
+      border-radius: 18px;
+      padding: 14px;
+      margin-top: 12px;
+    }
+
+    .memory-text {
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .memory-meta {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--orange-soft);
+      color: #ffb36b;
+      border: 1px solid var(--border);
+      margin-right: 6px;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 840px) {
+      body { padding: 12px; }
+      header { flex-direction: column; align-items: flex-start; }
+      .content { grid-template-columns: 1fr; padding: 14px; }
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <div class="eyebrow">Persistent Memory Control</div>
+        <h1>Osiris Memory Manager</h1>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        &nbsp; / &nbsp;
+        <a href="/chat.html">Chat</a>
+      </nav>
+    </header>
+
+    <section class="content">
+      <div class="card">
+        <h2>Add Memory</h2>
+
+        <label for="memoryText">Memory Text</label>
+        <textarea id="memoryText" placeholder="Example: Master prefers clear step-by-step Fedora and Docker help."></textarea>
+
+        <div class="row">
+          <div>
+            <label for="memorySource">Source</label>
+            <input id="memorySource" value="manual">
+          </div>
+
+          <div>
+            <label for="memoryImportance">Importance</label>
+            <select id="memoryImportance">
+              <option value="10">10 - Critical</option>
+              <option value="9">9 - Very High</option>
+              <option value="8">8 - High</option>
+              <option value="7">7</option>
+              <option value="6">6</option>
+              <option value="5" selected>5 - Normal</option>
+              <option value="4">4</option>
+              <option value="3">3 - Low</option>
+              <option value="2">2</option>
+              <option value="1">1 - Tiny</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="addBtn">Store Memory</button>
+        <div id="addStatus" class="status"></div>
+      </div>
+
+      <div class="card">
+        <h2>Search Memory</h2>
+
+        <label for="searchQuery">Search Query</label>
+        <textarea id="searchQuery" placeholder="Example: What hardware is Osiris running on?"></textarea>
+
+        <button id="searchBtn">Search</button>
+        <button id="clearSearchBtn" class="secondary">Clear</button>
+
+        <div id="searchStatus" class="status"></div>
+        <div id="searchResults"></div>
+      </div>
+
+      <div class="card wide">
+        <h2>Recent Memories</h2>
+        <button id="refreshBtn" class="secondary">Refresh List</button>
+        <div id="listStatus" class="status"></div>
+        <div id="memoryList"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "http://api.osiris.local";
+
+    const memoryText = document.getElementById("memoryText");
+    const memorySource = document.getElementById("memorySource");
+    const memoryImportance = document.getElementById("memoryImportance");
+    const addBtn = document.getElementById("addBtn");
+    const addStatus = document.getElementById("addStatus");
+
+    const searchQuery = document.getElementById("searchQuery");
+    const searchBtn = document.getElementById("searchBtn");
+    const clearSearchBtn = document.getElementById("clearSearchBtn");
+    const searchStatus = document.getElementById("searchStatus");
+    const searchResults = document.getElementById("searchResults");
+
+    const refreshBtn = document.getElementById("refreshBtn");
+    const listStatus = document.getElementById("listStatus");
+    const memoryList = document.getElementById("memoryList");
+
+    function renderMemory(container, item, options = {}) {
+      const payload = item.payload || item;
+      const text = payload.text || item.text || "No text";
+      const source = payload.source || item.source || "unknown";
+      const importance = payload.importance || item.importance || "unknown";
+      const score = item.score !== undefined ? Number(item.score).toFixed(4) : null;
+      const id = item.id || payload.id || "unknown";
+
+      const div = document.createElement("div");
+      div.className = "memory";
+
+      const textDiv = document.createElement("div");
+      textDiv.className = "memory-text";
+      textDiv.textContent = text;
+
+      const meta = document.createElement("div");
+      meta.className = "memory-meta";
+
+      meta.innerHTML = `
+        <span class="pill">source: ${source}</span>
+        <span class="pill">importance: ${importance}</span>
+        ${score ? `<span class="pill">score: ${score}</span>` : ""}
+        <span class="pill">id: ${id}</span>
+      `;
+
+      div.appendChild(textDiv);
+      div.appendChild(meta);
+      container.appendChild(div);
+    }
+
+    async function addMemory() {
+      const text = memoryText.value.trim();
+
+      if (!text) {
+        addStatus.textContent = "Enter a memory first.";
+        return;
+      }
+
+      addBtn.disabled = true;
+      addStatus.textContent = "Storing memory...";
+
+      try {
+        const response = await fetch(`${API_BASE}/memory/add`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text,
+            source: memorySource.value.trim() || "manual",
+            importance: Number(memoryImportance.value)
+          })
+        });
+
+        if (!response.ok) throw new Error(`API returned ${response.status}`);
+
+        const data = await response.json();
+        addStatus.textContent = `Stored memory:\n${data.id}`;
+        memoryText.value = "";
+        await listMemories();
+      } catch (error) {
+        addStatus.textContent = `Error: ${error.message}`;
+      } finally {
+        addBtn.disabled = false;
+      }
+    }
+
+    async function searchMemory() {
+      const query = searchQuery.value.trim();
+
+      if (!query) {
+        searchStatus.textContent = "Enter a search query first.";
+        return;
+      }
+
+      searchBtn.disabled = true;
+      searchStatus.textContent = "Searching memory...";
+      searchResults.innerHTML = "";
+
+      try {
+        const response = await fetch(`${API_BASE}/memory/search`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, limit: 5 })
+        });
+
+        if (!response.ok) throw new Error(`API returned ${response.status}`);
+
+        const data = await response.json();
+        searchStatus.textContent = `Found ${data.results.length} result(s).`;
+
+        data.results.forEach(result => renderMemory(searchResults, result));
+      } catch (error) {
+        searchStatus.textContent = `Error: ${error.message}`;
+      } finally {
+        searchBtn.disabled = false;
+      }
+    }
+
+    async function listMemories() {
+      refreshBtn.disabled = true;
+      listStatus.textContent = "Loading memories...";
+      memoryList.innerHTML = "";
+
+      try {
+        const response = await fetch(`${API_BASE}/memory/list`);
+
+        if (!response.ok) throw new Error(`API returned ${response.status}`);
+
+        const data = await response.json();
+        listStatus.textContent = `Showing ${data.count} recent memory/memories.`;
+
+        data.memories.forEach(memory => renderMemory(memoryList, memory));
+      } catch (error) {
+        listStatus.textContent = `Error: ${error.message}`;
+      } finally {
+        refreshBtn.disabled = false;
+      }
+    }
+
+    addBtn.addEventListener("click", addMemory);
+    searchBtn.addEventListener("click", searchMemory);
+    refreshBtn.addEventListener("click", listMemories);
+
+    clearSearchBtn.addEventListener("click", () => {
+      searchQuery.value = "";
+      searchStatus.textContent = "";
+      searchResults.innerHTML = "";
+    });
+
+    listMemories();
+  </script>
+</body>
+</html>

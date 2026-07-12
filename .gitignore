@@ -1,0 +1,96 @@
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+id_ed25519
+id_ed25519.pub
+id_rsa
+id_rsa.pub
+authorized_keys
+keys.json
+
+# Docker runtime data
+postgres/data/
+ollama/data/
+qdrant/storage/
+mqtt/data/
+proxy/data/
+proxy/data.bak.*/
+proxy/letsencrypt/
+monitoring/uptime-kuma/
+
+# Databases and runtime state
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# JavaScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.cache/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Generated archives and backups
+*.tar
+*.tar.gz
+*.zip
+*.bak
+*.backup
+*.backup.*
+*.old
+*.old.*
+backup/
+backups/
+
+# Local models
+*.gguf
+*.safetensors
+models/
+
+# Audit output
+osiris-audit/
+osiris-runtime-audit*
+
+# Pre-change snapshots
+*.before-*
+*.before.*
+
+# External reference documents
+documents/programmingWithPython.pdf
+scripts/documents/programmingWithPython.pdf
+
+# External reference documents
+documents/programmingWithPython.pdf
+scripts/documents/programmingWithPython.pdf

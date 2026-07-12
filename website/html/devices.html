@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Osiris Devices</title>
+  <style>
+    :root {
+      --bg: #0b0b0f;
+      --panel: #16161d;
+      --panel-2: #20202a;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --orange: #ff7a1a;
+      --orange-soft: rgba(255, 122, 26, 0.14);
+      --border: rgba(255, 122, 26, 0.25);
+      --danger: #ef4444;
+      --danger-soft: rgba(239, 68, 68, 0.15);
+      --ok: #22c55e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(255, 122, 26, 0.16), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      padding: 24px;
+    }
+
+    .shell {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(22, 22, 29, 0.9);
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--orange);
+    }
+
+    h2 {
+      color: #ffb36b;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    a {
+      color: #ffb36b;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      background: rgba(22, 22, 29, 0.9);
+      margin-bottom: 18px;
+    }
+
+    .device-card {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(32,32,42,0.75);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .device-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .device-name {
+      font-size: 1.25rem;
+      color: #ffb36b;
+      font-weight: 900;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 5px 9px;
+      margin: 3px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 800;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, #ff7a1a, #f97316);
+      color: #111;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: rgba(255, 122, 26, 0.14);
+      color: #ffb36b;
+      border: 1px solid var(--border);
+    }
+
+    button.danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-radius: 16px;
+      padding: 14px;
+      background: #050507;
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #d4d4d8;
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    @media (max-width: 800px) {
+      body { padding: 12px; }
+      header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Osiris Device Control</h1>
+        <div class="subtitle">Control and test registered devices through Osiris Device Core.</div>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        &nbsp; | &nbsp;
+        <a href="/chat.html">Chat</a>
+        &nbsp; | &nbsp;
+        <a href="/permissions.html">Permissions</a>
+        &nbsp; | &nbsp;
+        <a href="/system.html">System</a>
+      </nav>
+    </header>
+
+    <section class="panel">
+      <h2>Registered Devices</h2>
+      <button id="refreshBtn">Refresh Devices</button>
+      <div id="devices"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Last Result</h2>
+      <pre id="resultBox">No command sent yet.</pre>
+    </section>
+
+    <section class="panel">
+      <h2>Recent Device Events</h2>
+      <button onclick="loadEvents()">Refresh Events</button>
+      <pre id="eventsBox">No events loaded yet.</pre>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "http://localhost:8000";
+
+    const devicesBox = document.getElementById("devices");
+    const resultBox = document.getElementById("resultBox");
+    const eventsBox = document.getElementById("eventsBox");
+    const refreshBtn = document.getElementById("refreshBtn");
+
+    function showResult(data) {
+      resultBox.textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function apiFetch(path, options = {}) {
+      const res = await fetch(`${API_BASE}${path}`, options);
+      const data = await res.json();
+
+      if (!res.ok) {
+        showResult(data);
+        throw new Error(data.detail || "API request failed");
+      }
+
+      return data;
+    }
+
+    async function loadDevices() {
+      try {
+        const data = await apiFetch("/devices");
+        devicesBox.innerHTML = "";
+
+        Object.entries(data.devices || {}).forEach(([deviceId, device]) => {
+          const card = document.createElement("div");
+          card.className = "device-card";
+
+          const capabilities = (device.capabilities || [])
+            .map(cap => `<span class="pill">${cap}</span>`)
+            .join("");
+
+          card.innerHTML = `
+            <div class="device-top">
+              <div>
+                <div class="device-name">${device.name}</div>
+                <div class="pill">${deviceId}</div>
+                <div class="pill">${device.type}</div>
+                <div class="pill">${device.platform}</div>
+                <div class="pill">${device.enabled ? "enabled" : "disabled"}</div>
+              </div>
+            </div>
+
+            <div style="margin-top: 12px;">
+              ${capabilities}
+            </div>
+
+            <div class="actions">
+              <button onclick="sendStatus('${deviceId}')">Status</button>
+              <button class="secondary" onclick="sendLed('${deviceId}', 'led_on')">LED On</button>
+              <button class="secondary" onclick="sendLed('${deviceId}', 'led_off')">LED Off</button>
+              <button class="danger" onclick="emergencyStop('${deviceId}')">Emergency Stop</button>
+            </div>
+          `;
+
+          devicesBox.appendChild(card);
+        });
+
+        showResult(data);
+      } catch (err) {
+        showResult({ error: String(err) });
+      }
+    }
+
+    async function sendStatus(deviceId) {
+      const data = await apiFetch(`/devices/${deviceId}/command`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          tool_name: "robot_status",
+          capability: "robot.status",
+          action: "status",
+          params: {}
+        })
+      });
+
+      showResult(data);
+    }
+
+    async function sendLed(deviceId, action) {
+      const data = await apiFetch(`/devices/${deviceId}/command`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          tool_name: "robot_led_control",
+          capability: "robot.led",
+          action,
+          params: {}
+        })
+      });
+
+      showResult(data);
+    }
+
+    async function emergencyStop(deviceId) {
+      const data = await apiFetch(`/robots/${deviceId}/emergency-stop`, {
+        method: "POST"
+      });
+
+      showResult(data);
+    }
+
+    async function loadEvents() {
+      try {
+        const data = await apiFetch("/devices/events/recent?limit=25");
+        eventsBox.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        eventsBox.textContent = String(err);
+      }
+    }
+
+    refreshBtn.addEventListener("click", loadDevices);
+    loadDevices();
+    loadEvents();
+  </script>
+</body>
+</html>

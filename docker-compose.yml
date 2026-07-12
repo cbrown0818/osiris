@@ -1,0 +1,143 @@
+name: osiris-stack
+
+services:
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: osiris-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "127.0.0.1:81:81"
+    environment:
+      TZ: ${TZ}
+      DISABLE_IPV6: "true"
+    volumes:
+      - ./proxy/data:/data:Z
+      - ./proxy/letsencrypt:/etc/letsencrypt:Z
+    networks:
+      - osiris-public
+      - osiris-internal
+
+  website:
+    image: nginx:alpine
+    container_name: osiris-website
+    restart: unless-stopped
+    volumes:
+      - ./website/html:/usr/share/nginx/html:z
+    ports:
+      - "127.0.0.1:8088:80"
+    networks:
+      - osiris-internal
+
+  osiris-api:
+    build:
+      context: ./osiris-api
+      dockerfile: Dockerfile
+    container_name: osiris-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      ollama:
+        condition: service_started
+    volumes:
+      - ./osiris-api/app:/app:z
+      - ./osiris-api:/workspace/osiris-api:z
+      - ./website:/workspace/website:z
+      - ./host-agent:/workspace/host-agent:z
+      - ./agents:/workspace/agents:z
+      - ./scripts:/workspace/scripts:z
+      - ./docker-compose.yml:/workspace/docker-compose.yml:z
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - osiris-internal
+    expose:
+      - "8000"
+    ports:
+      - "127.0.0.1:8000:8000"
+  postgres:
+    image: postgres:16-alpine
+    container_name: osiris-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data:Z
+    networks:
+      - osiris-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U osiris_user -d osiris"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: osiris-qdrant
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT__SERVICE__API_KEY}
+    volumes:
+      - ./qdrant/storage:/qdrant/storage:Z
+    networks:
+      - osiris-internal
+    expose:
+      - "6333"
+      - "6334"
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: osiris-ollama
+    expose:
+      - "11434"
+    networks:
+      - osiris-internal
+    restart: unless-stopped
+    volumes:
+      - ./ollama/data:/root/.ollama:Z
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities:
+                - gpu
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: osiris-uptime
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/uptime-kuma:/app/data:Z
+    networks:
+      - osiris-internal
+    expose:
+      - "3001"
+
+
+  mqtt:
+    image: eclipse-mosquitto:latest
+    container_name: osiris-mqtt
+    restart: unless-stopped
+    volumes:
+      - ./mqtt/config:/mosquitto/config:Z
+      - ./mqtt/data:/mosquitto/data:Z
+      - ./mqtt/log:/mosquitto/log:Z
+    ports:
+      - "127.0.0.1:1883:1883"
+    networks:
+      - osiris-internal
+
+networks:
+  osiris-public:
+    name: osiris-public
+
+  osiris-internal:
+    name: osiris-internal

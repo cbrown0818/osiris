@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Osiris Security</title>
+  <style>
+    :root {
+      --bg: #0b0b0f;
+      --panel: #16161d;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --orange: #ff7a1a;
+      --border: rgba(255, 122, 26, 0.25);
+      --ok: #22c55e;
+      --warn: #facc15;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(255, 122, 26, 0.16), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      padding: 24px;
+    }
+
+    .shell {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header, .panel {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(22, 22, 29, 0.9);
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--orange);
+    }
+
+    h2 {
+      color: #ffb36b;
+      margin-top: 0;
+    }
+
+    a {
+      color: #ffb36b;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .grade {
+      font-size: 1.4rem;
+      font-weight: 900;
+      padding: 10px 14px;
+      border-radius: 14px;
+      display: inline-block;
+      margin-top: 10px;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .strong { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, #ff7a1a, #f97316);
+      color: #111;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-radius: 16px;
+      padding: 14px;
+      background: #050507;
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #d4d4d8;
+      max-height: 420px;
+      overflow: auto;
+    }
+
+    @media (max-width: 850px) {
+      body { padding: 12px; }
+      header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Osiris Security</h1>
+        <div class="subtitle">Read-only outside-threat and exposure check.</div>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        &nbsp; | &nbsp;
+        <a href="/chat.html">Chat</a>
+        &nbsp; | &nbsp;
+        <a href="/system.html">System</a>
+        &nbsp; | &nbsp;
+        <a href="/development.html">Development</a>
+        &nbsp; | &nbsp;
+        <a href="/approvals.html">Approvals</a>
+      </nav>
+    </header>
+
+    <section class="panel">
+      <button onclick="loadSecurity()">Refresh Security Status</button>
+      <div id="gradeBox" class="grade">Loading...</div>
+    </section>
+
+    <section class="panel">
+      <h2>Issues</h2>
+      <ul id="issuesBox"></ul>
+    </section>
+
+    <section class="panel">
+      <h2>Warnings</h2>
+      <ul id="warningsBox"></ul>
+    </section>
+
+    <section class="panel">
+      <h2>Passed Checks</h2>
+      <ul id="passedBox"></ul>
+    </section>
+
+    <section class="panel">
+      <h2>Raw Security Data</h2>
+      <pre id="rawBox">Loading...</pre>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "http://localhost:8000";
+
+    const gradeBox = document.getElementById("gradeBox");
+    const issuesBox = document.getElementById("issuesBox");
+    const warningsBox = document.getElementById("warningsBox");
+    const passedBox = document.getElementById("passedBox");
+    const rawBox = document.getElementById("rawBox");
+
+    function listItems(element, items, emptyText) {
+      element.innerHTML = "";
+
+      if (!items || items.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = emptyText;
+        element.appendChild(li);
+        return;
+      }
+
+      items.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        element.appendChild(li);
+      });
+    }
+
+    function gradeClass(grade) {
+      if (grade === "Strong") return "strong";
+      if (grade === "Good with Warnings") return "warn";
+      return "danger";
+    }
+
+    async function loadSecurity() {
+      gradeBox.textContent = "Loading...";
+      gradeBox.className = "grade";
+      rawBox.textContent = "Loading...";
+
+      try {
+        const res = await fetch(`${API_BASE}/security/status`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || "Failed to load security status.");
+        }
+
+        gradeBox.textContent = `Security Grade: ${data.grade}`;
+        gradeBox.className = `grade ${gradeClass(data.grade)}`;
+
+        listItems(issuesBox, data.issues, "No issues detected.");
+        listItems(warningsBox, data.warnings, "No warnings.");
+        listItems(passedBox, data.passed, "No passed checks returned.");
+
+        rawBox.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        gradeBox.textContent = "Security Grade: Error";
+        gradeBox.className = "grade danger";
+        rawBox.textContent = String(err);
+      }
+    }
+
+    loadSecurity();
+  </script>
+</body>
+</html>

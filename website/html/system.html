@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Osiris System</title>
+  <style>
+    :root {
+      --bg: #0b0b0f;
+      --panel: #16161d;
+      --panel-2: #20202a;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --orange: #ff7a1a;
+      --border: rgba(255, 122, 26, 0.25);
+      --ok: #22c55e;
+      --warn: #facc15;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(255, 122, 26, 0.16), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      padding: 24px;
+    }
+
+    .shell {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(22, 22, 29, 0.9);
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--orange);
+    }
+
+    h2 {
+      color: #ffb36b;
+      margin-top: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    a {
+      color: #ffb36b;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      background: rgba(22, 22, 29, 0.9);
+      margin-bottom: 18px;
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .metric:last-child {
+      border-bottom: 0;
+    }
+
+    .label {
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .value {
+      font-weight: 900;
+      text-align: right;
+    }
+
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, #ff7a1a, #f97316);
+      color: #111;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-radius: 16px;
+      padding: 14px;
+      background: #050507;
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #d4d4d8;
+      max-height: 420px;
+      overflow: auto;
+    }
+
+    @media (max-width: 850px) {
+      body { padding: 12px; }
+      header { flex-direction: column; align-items: flex-start; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Osiris System</h1>
+        <div class="subtitle">Real Fedora tower status from Osiris Host Agent.</div>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        &nbsp; | &nbsp;
+        <a href="/chat.html">Chat</a>
+        &nbsp; | &nbsp;
+        <a href="/memory.html">Memory</a>
+        &nbsp; | &nbsp;
+        <a href="/permissions.html">Permissions</a>
+        &nbsp; | &nbsp;
+        <a href="/devices.html">Devices</a>
+      </nav>
+    </header>
+
+    <section class="panel">
+      <button id="refreshBtn">Refresh System Status</button>
+      <span id="statusText" class="subtitle"></span>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>Host</h2>
+        <div id="hostBox"></div>
+      </div>
+
+      <div class="panel">
+        <h2>CPU / Memory</h2>
+        <div id="cpuMemBox"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Disk / Swap</h2>
+        <div id="diskSwapBox"></div>
+      </div>
+
+      <div class="panel">
+        <h2>GPU</h2>
+        <div id="gpuBox"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Network</h2>
+      <div id="networkBox"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Raw Summary</h2>
+      <pre id="rawBox">Loading...</pre>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "http://localhost:8000";
+
+    const refreshBtn = document.getElementById("refreshBtn");
+    const statusText = document.getElementById("statusText");
+    const hostBox = document.getElementById("hostBox");
+    const cpuMemBox = document.getElementById("cpuMemBox");
+    const diskSwapBox = document.getElementById("diskSwapBox");
+    const gpuBox = document.getElementById("gpuBox");
+    const networkBox = document.getElementById("networkBox");
+    const rawBox = document.getElementById("rawBox");
+
+    function metric(label, value, cls = "") {
+      return `
+        <div class="metric">
+          <div class="label">${label}</div>
+          <div class="value ${cls}">${value}</div>
+        </div>
+      `;
+    }
+
+    function percentClass(value) {
+      if (value >= 85) return "danger";
+      if (value >= 65) return "warn";
+      return "ok";
+    }
+
+    function formatUptime(seconds) {
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return `${days}d ${hours}h ${minutes}m`;
+    }
+
+    async function loadSystem() {
+      statusText.textContent = " Loading...";
+      try {
+        const res = await fetch(`${API_BASE}/host/summary`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || "Failed to load host summary.");
+        }
+
+        const system = data.system || {};
+        const host = system.host || {};
+        const cpu = system.cpu || {};
+        const memory = system.memory || {};
+        const swap = system.swap || {};
+        const disk = system.disk || {};
+        const gpu = data.gpu || {};
+        const network = data.network || {};
+
+        hostBox.innerHTML =
+          metric("Hostname", host.hostname || "unknown") +
+          metric("Host Time", host.time || "unknown") +
+          metric("Boot Time", host.boot_time || "unknown") +
+          metric("Uptime", formatUptime(host.uptime_seconds || 0));
+
+        cpuMemBox.innerHTML =
+          metric("Physical Cores", cpu.physical_cores ?? "unknown") +
+          metric("Logical Cores", cpu.logical_cores ?? "unknown") +
+          metric("CPU Usage", `${cpu.percent ?? "unknown"}%`, percentClass(cpu.percent || 0)) +
+          metric("Load Average", (cpu.load_average || []).join(" / ")) +
+          metric("RAM Total", `${memory.total_gb ?? "unknown"} GB`) +
+          metric("RAM Used", `${memory.used_gb ?? "unknown"} GB`) +
+          metric("RAM Available", `${memory.available_gb ?? "unknown"} GB`, "ok") +
+          metric("RAM Usage", `${memory.percent ?? "unknown"}%`, percentClass(memory.percent || 0));
+
+        diskSwapBox.innerHTML =
+          metric("Disk Path", disk.path || "/") +
+          metric("Disk Total", `${disk.total_gb ?? "unknown"} GB`) +
+          metric("Disk Used", `${disk.used_gb ?? "unknown"} GB`) +
+          metric("Disk Free", `${disk.free_gb ?? "unknown"} GB`, "ok") +
+          metric("Disk Usage", `${disk.percent ?? "unknown"}%`, percentClass(disk.percent || 0)) +
+          metric("Swap Total", `${swap.total_gb ?? "unknown"} GB`) +
+          metric("Swap Used", `${swap.used_gb ?? "unknown"} GB`) +
+          metric("Swap Usage", `${swap.percent ?? "unknown"}%`, percentClass(swap.percent || 0));
+
+        if (gpu.available && gpu.gpus?.length) {
+          gpuBox.innerHTML = gpu.gpus.map((item, index) => `
+            <h3>GPU ${index + 1}</h3>
+            ${metric("Name", item.name)}
+            ${metric("Driver", item.driver_version)}
+            ${metric("Temperature", `${item.temperature_c}°C`, percentClass(Number(item.temperature_c)))}
+            ${metric("Utilization", `${item.utilization_percent}%`, percentClass(Number(item.utilization_percent)))}
+            ${metric("VRAM Used", `${item.memory_used_mib} MiB`)}
+            ${metric("VRAM Total", `${item.memory_total_mib} MiB`)}
+            ${metric("Power Draw", `${item.power_draw_w} W`)}
+          `).join("");
+        } else {
+          gpuBox.innerHTML = metric("GPU", "Not available", "warn");
+        }
+
+        networkBox.innerHTML =
+          metric("Hostname", network.hostname || "unknown") +
+          metric("IP Addresses", (network.ip_addresses || []).join("<br>"));
+
+        rawBox.textContent = JSON.stringify(data, null, 2);
+        statusText.textContent = " Updated.";
+
+      } catch (err) {
+        statusText.textContent = " Error.";
+        rawBox.textContent = String(err);
+      }
+    }
+
+    refreshBtn.addEventListener("click", loadSystem);
+    loadSystem();
+  </script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Osiris Permissions</title>
+  <style>
+    :root {
+      --bg: #0b0b0f;
+      --panel: #16161d;
+      --panel-2: #20202a;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --orange: #ff7a1a;
+      --orange-soft: rgba(255, 122, 26, 0.14);
+      --border: rgba(255, 122, 26, 0.25);
+      --danger: #ff4d4d;
+      --ok: #22c55e;
+      --warn: #facc15;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(255, 122, 26, 0.16), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      padding: 24px;
+    }
+
+    .shell {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(22, 22, 29, 0.9);
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--orange);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    a {
+      color: #ffb36b;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      background: rgba(22, 22, 29, 0.9);
+      margin-bottom: 18px;
+    }
+
+    .mode-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    select, button, input {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(24, 24, 27, 0.95);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font: inherit;
+      outline: none;
+    }
+
+    button {
+      background: linear-gradient(135deg, #ff7a1a, #f97316);
+      color: #111;
+      font-weight: 900;
+      cursor: pointer;
+      border: 0;
+    }
+
+    .tools {
+      display: grid;
+      gap: 10px;
+    }
+
+    .tool-row {
+      display: grid;
+      grid-template-columns: 1.5fr 0.8fr 0.8fr 0.8fr 0.9fr;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      background: rgba(32, 32, 42, 0.75);
+    }
+
+    .tool-name {
+      font-weight: 900;
+      color: #ffb36b;
+      word-break: break-word;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 800;
+    }
+
+    .risk-low { color: var(--ok); }
+    .risk-medium { color: var(--warn); }
+    .risk-high, .risk-critical { color: var(--danger); }
+    .risk-safety { color: #38bdf8; }
+
+    label {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 800;
+    }
+
+    .status-box {
+      white-space: pre-wrap;
+      color: var(--muted);
+      margin-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 12px;
+    }
+
+    @media (max-width: 850px) {
+      body { padding: 12px; }
+
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .tool-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Osiris Permission Control</h1>
+        <div class="subtitle">Toggle what Osiris can use right now.</div>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        &nbsp; | &nbsp;
+        <a href="/chat.html">Chat</a>
+        &nbsp; | &nbsp;
+        <a href="/system.html">System</a>
+        &nbsp; | &nbsp;
+        <a href="/memory.html">Memory</a>
+      </nav>
+    </header>
+
+    <section class="panel">
+      <h2>Global Mode</h2>
+      <div class="mode-row">
+        <label for="modeSelect">Mode</label>
+        <select id="modeSelect">
+          <option value="safe">Safe Mode</option>
+          <option value="normal">Normal Mode</option>
+          <option value="pentest">Pentest Mode</option>
+          <option value="admin">Admin Mode</option>
+        </select>
+        <button id="saveModeBtn">Save Mode</button>
+        <button id="refreshBtn">Refresh</button>
+      </div>
+      <div id="modeStatus" class="status-box"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Tool Toggles</h2>
+      <div id="toolList" class="tools"></div>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "http://localhost:8000";
+
+    const modeSelect = document.getElementById("modeSelect");
+    const modeStatus = document.getElementById("modeStatus");
+    const toolList = document.getElementById("toolList");
+    const saveModeBtn = document.getElementById("saveModeBtn");
+    const refreshBtn = document.getElementById("refreshBtn");
+
+    function riskClass(risk) {
+      return `risk-${risk || "unknown"}`;
+    }
+
+    async function loadPermissions() {
+      const res = await fetch(`${API_BASE}/permissions`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        modeStatus.textContent = data.detail || "Failed to load permissions.";
+        return;
+      }
+
+      modeSelect.value = data.mode;
+      modeStatus.textContent =
+        `Current mode: ${data.mode}\nPentest mode enabled: ${data.pentest_mode?.enabled}`;
+
+      toolList.innerHTML = "";
+
+      Object.entries(data.tools).forEach(([toolName, settings]) => {
+        const row = document.createElement("div");
+        row.className = "tool-row";
+
+        const enabledChecked = settings.enabled ? "checked" : "";
+        const approvalChecked = settings.approval_required ? "checked" : "";
+        const disabledApproval = settings.always_allowed ? "disabled" : "";
+
+        row.innerHTML = `
+          <div>
+            <div class="tool-name">${toolName}</div>
+            <div class="pill">${settings.category}</div>
+          </div>
+
+          <div>
+            <span class="pill ${riskClass(settings.risk)}">${settings.risk}</span>
+          </div>
+
+          <label>
+            Enabled
+            <input type="checkbox" ${enabledChecked}
+              onchange="toggleTool('${toolName}', this.checked, null)">
+          </label>
+
+          <label>
+            Require Approval
+            <input type="checkbox" ${approvalChecked} ${disabledApproval}
+              onchange="toggleTool('${toolName}', null, this.checked)">
+          </label>
+
+          <button onclick="checkTool('${toolName}')">Check</button>
+        `;
+
+        toolList.appendChild(row);
+      });
+    }
+
+    async function saveMode() {
+      const mode = modeSelect.value;
+
+      const res = await fetch(`${API_BASE}/permissions/mode`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ mode })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        modeStatus.textContent = data.detail || "Failed to save mode.";
+        return;
+      }
+
+      await loadPermissions();
+    }
+
+    async function toggleTool(toolName, enabled, approvalRequired) {
+      const body = { tool_name: toolName };
+
+      if (enabled !== null) {
+        body.enabled = enabled;
+      }
+
+      if (approvalRequired !== null) {
+        body.approval_required = approvalRequired;
+      }
+
+      const res = await fetch(`${API_BASE}/permissions/tool`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.detail || "Failed to update tool.");
+        return;
+      }
+
+      await loadPermissions();
+    }
+
+    async function checkTool(toolName) {
+      const res = await fetch(`${API_BASE}/permissions/check/${toolName}`);
+      const data = await res.json();
+
+      alert(JSON.stringify(data, null, 2));
+    }
+
+    saveModeBtn.addEventListener("click", saveMode);
+    refreshBtn.addEventListener("click", loadPermissions);
+
+    loadPermissions();
+  </script>
+</body>
+</html>
