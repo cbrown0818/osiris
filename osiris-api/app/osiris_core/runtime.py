@@ -6,6 +6,10 @@ from threading import RLock
 from time import monotonic
 from typing import Any
 
+from .bootstrap import (
+    BootstrapReport,
+    bootstrap_existing_capabilities,
+)
 from .capabilities import (
     Capability,
     CapabilityRegistry,
@@ -44,6 +48,7 @@ class OsirisCore:
         self._state = CoreState.CREATED
         self._started_monotonic: float | None = None
         self._started_at: str | None = None
+        self._bootstrap_report: BootstrapReport | None = None
         self._lock = RLock()
 
     @property
@@ -74,6 +79,12 @@ class OsirisCore:
                     requires_approval=False,
                 )
             )
+
+        self._bootstrap_report = (
+            bootstrap_existing_capabilities(
+                self.capabilities
+            )
+        )
 
         now = datetime.now(timezone.utc).isoformat()
 
@@ -119,6 +130,12 @@ class OsirisCore:
                 3,
             )
 
+        bootstrap = (
+            self._bootstrap_report.as_dict()
+            if self._bootstrap_report is not None
+            else None
+        )
+
         return {
             "identity": self.identity.as_dict(),
             "state": state.value,
@@ -127,6 +144,7 @@ class OsirisCore:
             "capabilities": self.capabilities.count,
             "tasks": self.tasks.count,
             "events": self.events.count,
+            "capability_bootstrap": bootstrap,
         }
 
 

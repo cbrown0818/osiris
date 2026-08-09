@@ -91,3 +91,29 @@ Reasoning and physical execution are separate layers.
 OSIRIS may decide what should be done, while deterministic execution
 controllers and independent safety mechanisms enforce physical and
 operational limits.
+
+## Existing-system capability bootstrap
+
+Phase 2B introduces discovery of existing OSIRIS subsystems.
+
+Legacy modules are registered with Core without being rewritten or
+executed during discovery.
+
+A discovered subsystem begins in the `registered` state.
+
+`registered` means:
+
+- the implementation exists
+- Core knows its identity
+- Core knows its category
+- Core knows its maximum risk classification
+- Core knows whether approval is required
+
+It does not yet mean the subsystem is safe for Core-directed
+execution.
+
+A subsystem becomes `available` only after a capability adapter and
+its execution contract have been validated.
+
+This distinction prevents OSIRIS from confusing code presence with
+permission or operational readiness.

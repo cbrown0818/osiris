@@ -1,3 +1,9 @@
+from .bootstrap import (
+    BootstrapReport,
+    CapabilitySpec,
+    EXISTING_CAPABILITY_SPECS,
+    bootstrap_existing_capabilities,
+)
 from .capabilities import (
     Capability,
     CapabilityRegistry,
@@ -10,6 +16,10 @@ from .runtime import CoreState, OsirisCore, core
 from .tasks import TaskManager, TaskRecord, TaskState
 
 __all__ = [
+    "BootstrapReport",
+    "CapabilitySpec",
+    "EXISTING_CAPABILITY_SPECS",
+    "bootstrap_existing_capabilities",
     "Capability",
     "CapabilityRegistry",
     "CapabilityRisk",

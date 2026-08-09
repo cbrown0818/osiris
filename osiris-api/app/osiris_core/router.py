@@ -21,11 +21,34 @@ def core_identity():
 
 @router.get("/capabilities")
 def core_capabilities():
+    capabilities = core.capabilities.all()
+
+    by_state: dict[str, int] = {}
+    by_category: dict[str, int] = {}
+
+    for capability in capabilities:
+        state = capability.state.value
+
+        by_state[state] = (
+            by_state.get(state, 0) + 1
+        )
+
+        category = capability.metadata.get(
+            "category",
+            "core",
+        )
+
+        by_category[category] = (
+            by_category.get(category, 0) + 1
+        )
+
     return {
-        "count": core.capabilities.count,
+        "count": len(capabilities),
+        "by_state": by_state,
+        "by_category": by_category,
         "capabilities": [
             capability.as_dict()
-            for capability in core.capabilities.all()
+            for capability in capabilities
         ],
     }
 
