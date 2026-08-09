@@ -94,3 +94,137 @@ scripts/documents/programmingWithPython.pdf
 # External reference documents
 documents/programmingWithPython.pdf
 scripts/documents/programmingWithPython.pdf
+
+# Editor and failed configuration snapshots
+*.save
+*.failed-yaml-*
+
+# Private chat, conversation and database data
+chat-logs/
+chat_logs/
+chat-exports/
+chat_exports/
+conversation-exports/
+conversation_exports/
+*chat-history*
+*chat_history*
+*chat-export*
+*chat_export*
+*conversation-history*
+*conversation_history*
+*conversation-export*
+*conversation_export*
+*.jsonl
+*.ndjson
+*.sql
+*.sql.gz
+*.dump
+*.dump.sha256
+
+# Private OSIRIS memory and authentication data
+*.gpg
+*.age
+private-backups/
+backup-passphrase
+api-token
+
+# Temporary local browser unlock pages
+.osiris-unlock-*.html
+
+# ============================================================
+# OSIRIS PRIVATE USER CONTENT - NEVER COMMIT
+# ============================================================
+
+# User uploads / attachments
+uploads/
+upload/
+attachments/
+attachment/
+
+# Images / screenshots / personal media
+screenshots/
+screenshot/
+photos/
+photo/
+generated-images/
+generated_images/
+user-images/
+user_images/
+
+# Conversation / prompt / response data
+chat-logs/
+chat_logs/
+chat-exports/
+chat_exports/
+conversation-exports/
+conversation_exports/
+transcripts/
+prompts/
+responses/
+questions/
+
+# Memory / session exports
+memory-exports/
+memory_exports/
+sessions/
+session-data/
+session_data/
+
+# Personal/local user data
+private-data/
+private_data/
+personal-data/
+personal_data/
+user-data/
+user_data/
+
+# IDE/user-local configuration
+.vscode/
+.idea/
+
+# Runtime databases / exports
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.jsonl
+*.ndjson
+
+# Private media files
+*.heic
+*.avif
+
+# Private archives
+private-backups/
+*.private.zip
+*.private.tar
+*.private.tar.gz
+
+# ============================================================
+# OSIRIS GLOBAL PRIVATE MEDIA / BINARY DENYLIST
+# Source repository is source-only by default.
+# ============================================================
+
+# Images
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.bmp
+*.tif
+*.tiff
+*.heic
+*.avif
+
+# Personal document/upload formats
+*.docx
+*.xlsx
+*.pptx
+
+# Runtime/export archives
+*.7z
+*.rar
+*.private.zip
+*.private.tar
+*.private.tar.gz

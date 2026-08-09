@@ -236,7 +236,7 @@
     <section id="messages">
       <div class="msg assistant">
         Osiris is online. Ask me what hardware I am running on.
-        <div class="meta">Connected to localhost:8000/chat</div>
+        <div class="meta">Connected to OSIRIS API</div>
       </div>
     </section>
 
@@ -257,8 +257,9 @@
     </form>
   </main>
 
+  <script src="/auth.js"></script>
   <script>
-    const API_BASE = "http://localhost:8000";
+    const API_BASE = "/api";
 
     const form = document.getElementById("chatForm");
     const promptInput = document.getElementById("prompt");
@@ -337,7 +338,7 @@
 
     async function loadModels() {
       try {
-        const response = await fetch("http://localhost:8000/system/status");
+        const response = await fetch("/api/system/status");
         if (!response.ok) throw new Error(`API returned ${response.status}`);
 
         const data = await response.json();

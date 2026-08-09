@@ -2,7 +2,7 @@ name: osiris-stack
 
 services:
   nginx-proxy-manager:
-    image: jc21/nginx-proxy-manager:latest
+    image: jc21/nginx-proxy-manager@sha256:52b2c59994f3d36acfcf70a1626f29734df0ed8c71bacc0269f78b6f939858bb
     container_name: osiris-proxy
     restart: unless-stopped
     ports:
@@ -19,16 +19,31 @@ services:
       - osiris-public
       - osiris-internal
 
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t >/dev/null 2>&1 && curl -fsS --max-time 5 http://127.0.0.1:81/ >/dev/null"]
+      interval: 30s
+      timeout: 8s
+      retries: 5
+      start_period: 20s
   website:
-    image: nginx:alpine
+    image: nginx@sha256:8b1e78743a03dbb2c95171cc58639fef29abc8816598e27fb910ed2e621e589a
     container_name: osiris-website
     restart: unless-stopped
     volumes:
       - ./website/html:/usr/share/nginx/html:z
+      - ./website/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro,z
     ports:
       - "127.0.0.1:8088:80"
     networks:
       - osiris-internal
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -qO- http://127.0.0.1/ >/dev/null 2>&1
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   osiris-api:
     build:
@@ -42,9 +57,9 @@ services:
       postgres:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
       ollama:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./osiris-api/app:/app:z
       - ./osiris-api:/workspace/osiris-api:z
@@ -61,8 +76,21 @@ services:
       - "8000"
     ports:
       - "127.0.0.1:8000:8000"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c 'import urllib.request;
+          response=urllib.request.urlopen(
+          "http://127.0.0.1:8000/health",timeout=5);
+          raise SystemExit(0 if response.status==200 else 1)'
+      interval: 15s
+      timeout: 7s
+      retries: 5
+      start_period: 20s
+
   postgres:
-    image: postgres:16-alpine
+    image: postgres@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
     container_name: osiris-postgres
     restart: unless-stopped
     env_file:
@@ -72,13 +100,13 @@ services:
     networks:
       - osiris-internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U osiris_user -d osiris"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 10s
       timeout: 5s
       retries: 5
 
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant@sha256:75eab8c4ba42096724fdcfde8b4de0b5713d529dde32f285a1f86fdcb2c9e50c
     container_name: osiris-qdrant
     restart: unless-stopped
     environment:
@@ -91,8 +119,21 @@ services:
       - "6333"
       - "6334"
 
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -ec 'exec 3<>/dev/tcp/127.0.0.1/6333;
+          printf "GET /readyz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3;
+          IFS= read -r status <&3;
+          [[ "$$status" == *" 200 "* ]]'
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama@sha256:fbaaecc6c632a73c2b4ca25ef52dbee0b68d07783fcb850f916404c004040f90
     container_name: osiris-ollama
     expose:
       - "11434"
@@ -109,9 +150,17 @@ services:
               count: 1
               capabilities:
                 - gpu
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - ollama list >/dev/null 2>&1
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
 
   uptime-kuma:
-    image: louislam/uptime-kuma:latest
+    image: louislam/uptime-kuma@sha256:3d632903e6af34139a37f18055c4f1bfd9b7205ae1138f1e5e8940ddc1d176f9
     container_name: osiris-uptime
     restart: unless-stopped
     volumes:
@@ -123,7 +172,7 @@ services:
 
 
   mqtt:
-    image: eclipse-mosquitto:latest
+    image: eclipse-mosquitto@sha256:a908c65cc8e67ec9d292ef27c2c0360dbaaee7eb1b935cdd194e67697f15dea1
     container_name: osiris-mqtt
     restart: unless-stopped
     volumes:
@@ -135,6 +184,12 @@ services:
     networks:
       - osiris-internal
 
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h 127.0.0.1 -p 1883 -t osiris/healthcheck -m ping -q 0 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 8s
+      retries: 5
+      start_period: 10s
 networks:
   osiris-public:
     name: osiris-public

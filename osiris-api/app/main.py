@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from model_router import select_model
+from api_auth import install_api_auth
 from stackoverflow_retriever import search_stackoverflow
 
 app = FastAPI(
@@ -34,6 +35,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+install_api_auth(app)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://qdrant:6333")

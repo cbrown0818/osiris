@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+echo "OSIRIS: running pre-commit privacy gate..."
+exec ./scripts/git-privacy-check.sh --staged

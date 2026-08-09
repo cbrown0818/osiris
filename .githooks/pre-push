@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+echo "OSIRIS: running full-history privacy gate before push..."
+exec ./scripts/git-privacy-check.sh --history
