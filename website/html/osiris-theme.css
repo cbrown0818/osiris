@@ -1,0 +1,384 @@
+/*
+ * OSIRIS Global Interface Theme
+ *
+ * Brand:
+ *   Black / Graphite / Neon Purple
+ *
+ * OSIRIS: Intelligence for Life.
+ */
+
+:root {
+    color-scheme: dark;
+
+    /* Core backgrounds */
+    --osiris-black: #07070a;
+    --osiris-black-soft: #0c0c11;
+    --osiris-graphite: #13131a;
+    --osiris-graphite-light: #1c1c25;
+    --osiris-grey-dark: #282832;
+
+    /* Purple identity */
+    --osiris-purple-deep: #5b21b6;
+    --osiris-purple: #8b5cf6;
+    --osiris-purple-bright: #a855f7;
+    --osiris-purple-light: #c084fc;
+
+    /* Text */
+    --osiris-text: #f4f4f7;
+    --osiris-text-secondary: #b4b4bf;
+    --osiris-text-muted: #787884;
+
+    /* Borders */
+    --osiris-border: #31313c;
+    --osiris-border-purple: rgba(139, 92, 246, 0.45);
+
+    /* Status colors */
+    --osiris-success: #36d399;
+    --osiris-warning: #fbbf24;
+    --osiris-danger: #ef4444;
+
+    /* Glow */
+    --osiris-glow:
+        0 0 10px rgba(139, 92, 246, 0.30),
+        0 0 24px rgba(168, 85, 247, 0.12);
+
+    /*
+     * Compatibility aliases for older OSIRIS pages.
+     * Existing pages can migrate gradually.
+     */
+    --bg: var(--osiris-black);
+    --background: var(--osiris-black);
+    --bg-secondary: var(--osiris-black-soft);
+
+    --panel: var(--osiris-graphite);
+    --card: var(--osiris-graphite);
+    --surface: var(--osiris-graphite);
+    --surface-2: var(--osiris-graphite-light);
+
+    --text: var(--osiris-text);
+    --text-primary: var(--osiris-text);
+    --text-secondary: var(--osiris-text-secondary);
+    --muted: var(--osiris-text-muted);
+
+    --primary: var(--osiris-purple);
+    --accent: var(--osiris-purple);
+    --accent-color: var(--osiris-purple);
+    --primary-color: var(--osiris-purple);
+
+    --border: var(--osiris-border);
+    --border-color: var(--osiris-border);
+}
+
+
+/* =========================================================
+   BASE
+   ========================================================= */
+
+html {
+    background:
+        radial-gradient(
+            circle at top,
+            rgba(91, 33, 182, 0.10),
+            transparent 38%
+        ),
+        var(--osiris-black);
+}
+
+body {
+    background:
+        linear-gradient(
+            180deg,
+            rgba(139, 92, 246, 0.035),
+            transparent 260px
+        ),
+        var(--osiris-black) !important;
+
+    color: var(--osiris-text) !important;
+}
+
+
+/* =========================================================
+   LINKS
+   ========================================================= */
+
+a {
+    color: var(--osiris-purple-light);
+}
+
+a:hover {
+    color: var(--osiris-purple-bright);
+}
+
+
+/* =========================================================
+   HEADINGS
+   ========================================================= */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--osiris-text);
+}
+
+h1 {
+    text-shadow:
+        0 0 18px rgba(139, 92, 246, 0.18);
+}
+
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+nav,
+.nav,
+.navbar,
+.sidebar,
+header {
+    border-color: var(--osiris-border) !important;
+}
+
+nav a,
+.nav a,
+.navbar a,
+.sidebar a {
+    transition:
+        color 0.15s ease,
+        background 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+nav a:hover,
+.nav a:hover,
+.navbar a:hover,
+.sidebar a:hover {
+    color: var(--osiris-purple-light) !important;
+}
+
+nav a.active,
+.nav a.active,
+.navbar a.active,
+.sidebar a.active,
+.active {
+    border-color: var(--osiris-purple) !important;
+}
+
+
+/* =========================================================
+   CARDS / PANELS
+   ========================================================= */
+
+.card,
+.panel,
+.widget,
+.section,
+.modal-content,
+dialog {
+    background-color: var(--osiris-graphite) !important;
+    border-color: var(--osiris-border) !important;
+}
+
+.card:hover,
+.panel:hover {
+    border-color: var(--osiris-border-purple) !important;
+}
+
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+button,
+.button,
+.btn {
+    background:
+        linear-gradient(
+            180deg,
+            var(--osiris-purple),
+            var(--osiris-purple-deep)
+        ) !important;
+
+    border-color: var(--osiris-purple) !important;
+    color: #ffffff !important;
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        filter 0.15s ease;
+}
+
+button:hover,
+.button:hover,
+.btn:hover {
+    box-shadow: var(--osiris-glow);
+    filter: brightness(1.08);
+}
+
+button:active,
+.button:active,
+.btn:active {
+    transform: translateY(1px);
+}
+
+
+/* Neutral buttons */
+
+button.secondary,
+.button.secondary,
+.btn-secondary {
+    background: var(--osiris-grey-dark) !important;
+    border-color: var(--osiris-border) !important;
+}
+
+
+/* =========================================================
+   FORMS
+   ========================================================= */
+
+input,
+textarea,
+select {
+    background-color: var(--osiris-black-soft) !important;
+    color: var(--osiris-text) !important;
+    border-color: var(--osiris-border) !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none !important;
+    border-color: var(--osiris-purple) !important;
+
+    box-shadow:
+        0 0 0 2px rgba(139, 92, 246, 0.15),
+        0 0 12px rgba(139, 92, 246, 0.12) !important;
+}
+
+::placeholder {
+    color: var(--osiris-text-muted);
+}
+
+
+/* =========================================================
+   TABLES
+   ========================================================= */
+
+table {
+    border-color: var(--osiris-border) !important;
+}
+
+th {
+    background-color: var(--osiris-graphite-light) !important;
+    color: var(--osiris-purple-light) !important;
+}
+
+td,
+th {
+    border-color: var(--osiris-border) !important;
+}
+
+tbody tr:hover {
+    background-color: rgba(139, 92, 246, 0.06) !important;
+}
+
+
+/* =========================================================
+   CODE / TERMINAL ELEMENTS
+   ========================================================= */
+
+pre,
+code,
+.console,
+.terminal,
+.log {
+    background-color: #09090d !important;
+    border-color: var(--osiris-border) !important;
+    color: #d7d7df !important;
+}
+
+
+/* =========================================================
+   BADGES / STATUS
+   ========================================================= */
+
+.badge,
+.status,
+.pill {
+    border-color: var(--osiris-border) !important;
+}
+
+.status-online,
+.status-good,
+.success,
+.healthy {
+    color: var(--osiris-success) !important;
+}
+
+.warning,
+.status-warning {
+    color: var(--osiris-warning) !important;
+}
+
+.error,
+.danger,
+.status-error,
+.unhealthy {
+    color: var(--osiris-danger) !important;
+}
+
+
+/* =========================================================
+   PURPLE BRAND ELEMENTS
+   ========================================================= */
+
+.brand,
+.logo-text,
+.osiris-title,
+.accent,
+.highlight {
+    color: var(--osiris-purple-light) !important;
+}
+
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color:
+        var(--osiris-purple-deep)
+        var(--osiris-black-soft);
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--osiris-black-soft);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--osiris-purple-deep);
+    border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--osiris-purple);
+}
+
+
+/* =========================================================
+   SELECTION
+   ========================================================= */
+
+::selection {
+    background: rgba(139, 92, 246, 0.45);
+    color: #ffffff;
+}
