@@ -14,6 +14,8 @@ from qdrant_client.models import Distance, VectorParams, PointStruct
 from model_router import select_model
 from api_auth import install_api_auth
 from stackoverflow_retriever import search_stackoverflow
+from osiris_core import core
+from osiris_core.router import router as core_router
 
 app = FastAPI(
     title="Osiris API",
@@ -37,6 +39,8 @@ app.add_middleware(
 )
 
 install_api_auth(app)
+
+app.include_router(core_router)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://qdrant:6333")
@@ -157,6 +161,12 @@ async def get_embedding(text: str):
 def startup():
     init_postgres()
     init_qdrant()
+    core.start()
+
+
+@app.on_event("shutdown")
+def shutdown():
+    core.stop()
 
 
 @app.get("/")
