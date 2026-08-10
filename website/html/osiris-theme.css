@@ -382,3 +382,35 @@ code,
     background: rgba(139, 92, 246, 0.45);
     color: #ffffff;
 }
+
+
+/* =========================================================
+   OSIRIS BRAND ENFORCEMENT
+   Remove legacy orange branding
+   ========================================================= */
+
+.orange,
+.text-orange,
+.orange-text,
+.brand-orange,
+.accent-orange,
+.nav-accent,
+.logo-accent {
+    color: var(--osiris-purple-light) !important;
+}
+
+.bg-orange,
+.orange-bg,
+.background-orange {
+    background-color: var(--osiris-purple-deep) !important;
+}
+
+.border-orange,
+.orange-border {
+    border-color: var(--osiris-purple) !important;
+}
+
+.glow-orange,
+.orange-glow {
+    box-shadow: var(--osiris-glow) !important;
+}
