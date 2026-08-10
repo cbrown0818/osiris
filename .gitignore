@@ -228,3 +228,7 @@ private-backups/
 *.private.zip
 *.private.tar
 *.private.tar.gz
+
+# OSIRIS source-controlled database migrations.
+# Runtime SQL dumps and arbitrary .sql files remain ignored.
+!osiris-api/db/migrations/*.sql

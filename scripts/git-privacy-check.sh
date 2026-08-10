@@ -13,6 +13,11 @@ RISKY_PATH_PATTERN='(^|/)(uploads?|attachments?|screenshots?|photos?|generated[-
 
 FORBIDDEN_FILE_PATTERN='(^|/)\.env($|\.)|\.(png|jpe?g|webp|gif|bmp|tiff?|heic|avif|db|sqlite|sqlite3|sql|dump|jsonl|ndjson|log|pem|key|p12|pfx|gpg|age|docx|xlsx|pptx|7z|rar)$'
 
+# Generic, version-controlled SQL schema migrations are allowed only
+# under this exact source path and naming convention.
+MIGRATION_SQL_PATTERN='^osiris-api/db/migrations/[0-9]{3}_[a-z0-9_]+\.sql$'
+
+
 LOCAL_SETTINGS_PATTERN='(^|/)\.vscode/|(^|/)\.idea/|(^|/)(credentials?|secrets?|personal[-_]?settings?|user[-_]?settings?)(\.|/)'
 
 SECRET_PATTERN='-----BEGIN ([A-Z ]+)?PRIVATE KEY-----|OSIRIS_API_TOKEN=[A-Za-z0-9_-]{32,}|github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9]+|sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|DATABASE_URL=.*://[^[:space:]]+:[^@[:space:]]+@'
@@ -41,7 +46,11 @@ check_path() {
     if printf '%s\n' "$path" |
         grep -Eiq "$FORBIDDEN_FILE_PATTERN"
     then
-        block "forbidden file type/path: $path"
+        if ! printf '%s\n' "$path" |
+            grep -Eq "$MIGRATION_SQL_PATTERN"
+        then
+            block "forbidden file type/path: $path"
+        fi
     fi
 
     if printf '%s\n' "$path" |
