@@ -15,6 +15,12 @@ from .memory_models import (
 from .memory_repository import (
     PostgresMemoryRepository,
 )
+from .memory_resolution import (
+    CanonicalMemoryResolutionPolicy,
+    MemoryResolution,
+    MemoryResolutionContext,
+    MemoryResolutionType,
+)
 
 
 @dataclass(
@@ -23,14 +29,23 @@ from .memory_repository import (
 )
 class MemoryServiceResult:
     decision: MemoryAdmissionDecision
+
     stored: MemoryRecord | None = None
     duplicate: MemoryRecord | None = None
+
+    resolution: MemoryResolution | None = None
+
+    superseded: MemoryRecord | None = None
+    replacement: MemoryRecord | None = None
 
     @property
     def written(
         self,
     ) -> bool:
-        return self.stored is not None
+        return (
+            self.stored is not None
+            or self.replacement is not None
+        )
 
     @property
     def duplicate_found(
@@ -38,15 +53,30 @@ class MemoryServiceResult:
     ) -> bool:
         return self.duplicate is not None
 
+    @property
+    def supersession_performed(
+        self,
+    ) -> bool:
+        return (
+            self.superseded is not None
+            and self.replacement is not None
+        )
+
 
 class CanonicalMemoryService:
     """
-    Canonical admission-to-persistence gateway.
+    Canonical memory admission and resolution
+    gateway.
 
-    REJECTED and REVIEW decisions never write.
+    REJECTED and REVIEW admission decisions
+    never write.
 
-    ADMITTED candidates are checked for an
-    active fingerprint duplicate before creation.
+    Exact active fingerprint duplicates never
+    create a second canonical memory.
+
+    Conflicting memories never mutate existing
+    state unless the resolution policy identifies
+    a verified explicit correction.
 
     PostgreSQL remains authoritative.
     """
@@ -57,6 +87,10 @@ class CanonicalMemoryService:
         *,
         policy: (
             CanonicalMemoryAdmissionPolicy
+            | None
+        ) = None,
+        resolution_policy: (
+            CanonicalMemoryResolutionPolicy
             | None
         ) = None,
     ) -> None:
@@ -83,13 +117,60 @@ class CanonicalMemoryService:
                 "CanonicalMemoryAdmissionPolicy"
             )
 
+        if resolution_policy is None:
+            resolution_policy = (
+                CanonicalMemoryResolutionPolicy()
+            )
+
+        if not isinstance(
+            resolution_policy,
+            CanonicalMemoryResolutionPolicy,
+        ):
+            raise TypeError(
+                "resolution_policy must be a "
+                "CanonicalMemoryResolutionPolicy"
+            )
+
         self._repository = repository
         self._policy = policy
+        self._resolution_policy = (
+            resolution_policy
+        )
+
+    async def _find_existing_scope(
+        self,
+        record: MemoryRecord,
+    ) -> list[MemoryRecord]:
+        if record.subject_entity_id is None:
+            return []
+
+        active_records = (
+            await self._repository.list(
+                kind=record.kind,
+                status=MemoryStatus.ACTIVE,
+                limit=500,
+                offset=0,
+            )
+        )
+
+        return [
+            existing
+            for existing in active_records
+            if (
+                existing.subject_entity_id
+                == record.subject_entity_id
+            )
+        ]
 
     async def admit(
         self,
         record: MemoryRecord,
         context: MemoryAdmissionContext,
+        *,
+        resolution_context: (
+            MemoryResolutionContext
+            | None
+        ) = None,
     ) -> MemoryServiceResult:
         decision = self._policy.evaluate(
             record,
@@ -114,16 +195,115 @@ class CanonicalMemoryService:
         )
 
         if duplicates:
-            return MemoryServiceResult(
-                decision=decision,
-                duplicate=duplicates[0],
+            duplicate = duplicates[0]
+
+            resolution = (
+                self._resolution_policy.compare(
+                    record,
+                    duplicate,
+                    (
+                        resolution_context
+                        or MemoryResolutionContext()
+                    ),
+                )
             )
 
-        stored = await self._repository.create(
+            return MemoryServiceResult(
+                decision=decision,
+                duplicate=duplicate,
+                resolution=resolution,
+            )
+
+        if resolution_context is None:
+            resolution_context = (
+                MemoryResolutionContext()
+            )
+
+        scoped = await self._find_existing_scope(
             record
         )
 
+        if len(scoped) > 1:
+            resolution = MemoryResolution(
+                resolution=(
+                    MemoryResolutionType
+                    .INSUFFICIENT_CONTEXT
+                ),
+                reason_code=(
+                    "ambiguous_existing_scope"
+                ),
+                reason=(
+                    "Multiple active memories "
+                    "occupy the same canonical "
+                    "subject and kind."
+                ),
+                candidate_id=record.id,
+                existing_id=None,
+            )
+
+            return MemoryServiceResult(
+                decision=decision,
+                resolution=resolution,
+            )
+
+        existing = (
+            scoped[0]
+            if scoped
+            else None
+        )
+
+        resolution = (
+            self._resolution_policy.compare(
+                record,
+                existing,
+                resolution_context,
+            )
+        )
+
+        if (
+            resolution.resolution
+            == MemoryResolutionType.DISTINCT
+        ):
+            stored = (
+                await self._repository.create(
+                    record
+                )
+            )
+
+            return MemoryServiceResult(
+                decision=decision,
+                stored=stored,
+                resolution=resolution,
+            )
+
+        if (
+            resolution.resolution
+            == (
+                MemoryResolutionType
+                .SUPERSESSION_CANDIDATE
+            )
+        ):
+            if existing is None:
+                raise RuntimeError(
+                    "supersession resolution "
+                    "requires existing memory"
+                )
+
+            old_record, new_record = (
+                await self._repository.supersede(
+                    existing.id,
+                    record,
+                )
+            )
+
+            return MemoryServiceResult(
+                decision=decision,
+                resolution=resolution,
+                superseded=old_record,
+                replacement=new_record,
+            )
+
         return MemoryServiceResult(
             decision=decision,
-            stored=stored,
+            resolution=resolution,
         )
