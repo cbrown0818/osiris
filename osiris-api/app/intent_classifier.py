@@ -51,22 +51,22 @@ async def classify_intent_with_ai(message: str, fallback_command: str = "chat") 
     if text.startswith("self heal file "):
         return "self_heal"
 
+    # Explicit autonomous execution language stays approval-gated.
     if any(x in text for x in [
         "run agent",
-        "think through",
         "autonomously",
+    ]):
+        return "agent_loop"
+
+    # Analysis and reasoning language defaults to planning only.
+    if any(x in text for x in [
+        "think through",
         "fully analyze",
         "deep analyze",
         "optimize my codebase",
         "analyze my codebase",
-    ]):
-        return "agent_loop"
-
-    if any(x in text for x in [
-        "optimize my codebase",
         "analyze project",
         "inspect project",
-        "analyze my codebase",
         "optimize the codebase",
         "review my whole project",
     ]):

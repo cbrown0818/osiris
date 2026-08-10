@@ -383,6 +383,19 @@ async def _run_intent(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _run_reasoning(
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    from reasoning_planner import build_reasoning_plan
+
+    goal = _require_string(
+        payload,
+        "goal",
+    )
+
+    return build_reasoning_plan(goal)
+
+
 async def _run_system_monitoring(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
@@ -408,6 +421,13 @@ def install_phase2c_adapters(
             module_name="intent_classifier",
             function_name="classify_intent_with_ai",
             runner=_run_intent,
+        ),
+        FunctionAdapter(
+            capability_id="intelligence.reasoning",
+            name="Read-Only Reasoning Adapter",
+            module_name="reasoning_planner",
+            function_name="build_reasoning_plan",
+            runner=_run_reasoning,
         ),
         FunctionAdapter(
             capability_id="system.monitoring",

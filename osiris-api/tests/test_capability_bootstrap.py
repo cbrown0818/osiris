@@ -86,6 +86,7 @@ class CapabilityBootstrapTests(
         core.start()
 
         protected = {
+            "intelligence.agent_execution",
             "tools.execution",
             "security.permissions",
             "security.approvals",

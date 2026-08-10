@@ -41,6 +41,8 @@ async def execute_plan(plan: list[str], message: str = "") -> dict[str, Any]:
 
     for step in plan:
         try:
+            step_status = "success"
+
             if step == "dev_tree":
                 data = list_tree(max_depth=3)
                 output = f"Project tree inspected. Found {data.get('count')} items."
@@ -74,11 +76,12 @@ async def execute_plan(plan: list[str], message: str = "") -> dict[str, Any]:
 
             else:
                 data = None
+                step_status = "unsupported"
                 output = "No executor available for this step."
 
             results.append({
                 "step": step,
-                "status": "success",
+                "status": step_status,
                 "output": output,
                 "data": data,
             })
@@ -91,8 +94,17 @@ async def execute_plan(plan: list[str], message: str = "") -> dict[str, Any]:
                 "data": None,
             })
 
+    overall_status = (
+        "complete"
+        if all(
+            result.get("status") == "success"
+            for result in results
+        )
+        else "partial"
+    )
+
     return {
-        "status": "complete",
+        "status": overall_status,
         "steps_executed": len(results),
         "context": context,
         "results": results,

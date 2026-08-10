@@ -61,8 +61,19 @@ EXISTING_CAPABILITY_SPECS = (
         capability_id="intelligence.reasoning",
         name="Reasoning",
         description=(
-            "Perform structured reasoning over "
-            "OSIRIS requests and context."
+            "Build read-only reasoning and execution plans "
+            "without performing actions."
+        ),
+        category="intelligence",
+        module="reasoning_planner",
+        risk=CapabilityRisk.READ_ONLY,
+    ),
+    CapabilitySpec(
+        capability_id="intelligence.agent_execution",
+        name="Agent Execution",
+        description=(
+            "Run the legacy autonomous reasoning and "
+            "execution loop."
         ),
         category="intelligence",
         module="reasoner",
