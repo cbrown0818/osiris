@@ -10,6 +10,7 @@ from .adapters import (
     AdapterRegistry,
     install_phase2c_adapters,
 )
+from .authorization import AuthorizationGateway
 from .bootstrap import (
     BootstrapReport,
     bootstrap_existing_capabilities,
@@ -47,10 +48,17 @@ class OsirisCore:
 
         self.events = EventBus()
         self.capabilities = CapabilityRegistry(self.events)
+
+        self.authorization = AuthorizationGateway(
+            self.capabilities
+        )
+
         self.adapters = AdapterRegistry(
             self.capabilities,
             self.events,
+            authorization=self.authorization,
         )
+
         self.tasks = TaskManager(self.events)
 
         self._state = CoreState.CREATED

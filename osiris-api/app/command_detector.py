@@ -26,7 +26,8 @@ def detect_priority_command(message: str) -> str:
     if (
         text == "agent loop"
         or text.startswith("agent loop ")
-        or text.startswith("run agent loop ")
+        or text == "run agent"
+        or text.startswith("run agent ")
     ):
         return "agent_loop"
 

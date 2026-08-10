@@ -58,6 +58,17 @@ class AgentRouterCoreGateTests(
             "ApprovalRequired",
         )
 
+        self.assertIsNotNone(
+            result["data"]["approval_id"]
+        )
+
+        self.assertEqual(
+            result["data"]["authorization"][
+                "approval_status"
+            ],
+            "pending",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

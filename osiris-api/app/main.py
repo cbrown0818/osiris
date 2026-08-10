@@ -1018,6 +1018,7 @@ from approvals import (
     list_pending_approvals,
     get_approval,
     mark_approval_decision,
+    decide_pending_approval,
 )
 
 
@@ -1051,16 +1052,19 @@ def api_get_approval(approval_id: str):
 @app.post("/approvals/{approval_id}/deny")
 def api_deny_approval(approval_id: str):
     try:
-        approval = mark_approval_decision(
+        return decide_pending_approval(
             approval_id=approval_id,
             status="denied",
             result={
                 "message": "Denied by Master."
-            }
+            },
         )
-        return approval
+
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
 
 
 # -------------------------------------------------------------------
@@ -1145,30 +1149,181 @@ from device_core import send_device_command
 
 
 @app.post("/approvals/{approval_id}/approve")
-def api_approve_approval(approval_id: str):
+async def api_approve_approval(
+    approval_id: str,
+):
     try:
-        approval = get_approval(approval_id)
+        approval = get_approval(
+            approval_id
+        )
 
         if not approval:
-            raise HTTPException(status_code=404, detail="Approval not found")
-
-        if approval["status"] != "pending":
             raise HTTPException(
-                status_code=400,
-                detail=f"Approval is not pending. Current status: {approval['status']}"
+                status_code=404,
+                detail="Approval not found",
             )
 
         tool_name = approval["tool_name"]
         params = approval.get("params") or {}
+        permission = (
+            approval.get("permission")
+            or {}
+        )
+        action = approval.get("action")
 
-        # Device command approval execution
-        if "device_id" in params and "capability" in params and "action" in params:
+        is_core_approval = (
+            action == "core.capability.execute"
+            and permission.get(
+                "authorization_layer"
+            ) == "osiris_core"
+        )
+
+        # --------------------------------------------------
+        # OSIRIS Core capability approval
+        # --------------------------------------------------
+
+        if is_core_approval:
+            if approval["status"] == "pending":
+                decide_pending_approval(
+                    approval_id=approval_id,
+                    status="approved",
+                    result={
+                        "message": (
+                            "Approved for one exact "
+                            "Core execution."
+                        )
+                    },
+                )
+
+            elif approval["status"] != "approved":
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Approval is not pending. "
+                        "Current status: "
+                        f"{approval['status']}"
+                    ),
+                )
+
+            payload = params.get(
+                "payload",
+                {},
+            )
+
+            if not isinstance(
+                payload,
+                dict,
+            ):
+                mark_approval_decision(
+                    approval_id=approval_id,
+                    status="failed",
+                    result={
+                        "error": (
+                            "Core approval payload "
+                            "is invalid."
+                        )
+                    },
+                )
+
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Core approval payload "
+                        "must be an object."
+                    ),
+                )
+
+            capability_result = (
+                await core.adapters.execute(
+                    tool_name,
+                    payload,
+                    approval_id=approval_id,
+                )
+            )
+
+            updated = get_approval(
+                approval_id
+            )
+
+            if not capability_result.success:
+                if (
+                    updated
+                    and updated.get("status")
+                    == "approved"
+                ):
+                    mark_approval_decision(
+                        approval_id=approval_id,
+                        status="failed",
+                        result={
+                            "error": (
+                                capability_result.error
+                                or {}
+                            )
+                        },
+                    )
+
+                    updated = get_approval(
+                        approval_id
+                    )
+
+                return {
+                    "status": (
+                        updated.get("status")
+                        if updated
+                        else "failed"
+                    ),
+                    "approval": updated,
+                    "execution_result": (
+                        capability_result.as_dict()
+                    ),
+                }
+
+            return {
+                "status": "executed",
+                "approval": updated,
+                "execution_result": (
+                    capability_result.as_dict()
+                ),
+            }
+
+        # --------------------------------------------------
+        # Existing device command approval execution
+        # --------------------------------------------------
+
+        if approval["status"] != "pending":
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Approval is not pending. "
+                    "Current status: "
+                    f"{approval['status']}"
+                ),
+            )
+
+        if (
+            "device_id" in params
+            and "capability" in params
+            and "action" in params
+        ):
+            decide_pending_approval(
+                approval_id=approval_id,
+                status="approved",
+                result={
+                    "message": (
+                        "Approved for device execution."
+                    )
+                },
+            )
+
             result = send_device_command(
                 device_id=params["device_id"],
                 tool_name=tool_name,
                 capability=params["capability"],
                 action=params["action"],
-                params=params.get("params", {}),
+                params=params.get(
+                    "params",
+                    {},
+                ),
                 force_approved=True,
             )
 
@@ -1184,11 +1339,20 @@ def api_approve_approval(approval_id: str):
                 "execution_result": result,
             }
 
-        updated = mark_approval_decision(
+        # --------------------------------------------------
+        # Existing approval types without an execution
+        # handler retain approval-only behavior.
+        # --------------------------------------------------
+
+        updated = decide_pending_approval(
             approval_id=approval_id,
             status="approved",
             result={
-                "message": "Approved, but no executable handler exists yet for this approval type."
+                "message": (
+                    "Approved, but no executable "
+                    "handler exists yet for this "
+                    "approval type."
+                )
             },
         )
 
@@ -1199,17 +1363,36 @@ def api_approve_approval(approval_id: str):
 
     except HTTPException:
         raise
+
     except Exception as exc:
         try:
-            mark_approval_decision(
-                approval_id=approval_id,
-                status="failed",
-                result={"error": str(exc)},
+            current = get_approval(
+                approval_id
             )
+
+            if (
+                current
+                and current.get("status")
+                in {
+                    "approved",
+                    "executing",
+                }
+            ):
+                mark_approval_decision(
+                    approval_id=approval_id,
+                    status="failed",
+                    result={
+                        "error": str(exc)
+                    },
+                )
+
         except Exception:
             pass
 
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
 
 
 # -------------------------------------------------------------------

@@ -156,3 +156,151 @@ def mark_approval_decision(
         raise ValueError(f"Unknown approval id: {approval_id}")
 
     return dict(row)
+
+
+def claim_approval_for_execution(
+    approval_id: str,
+    *,
+    tool_name: str,
+    target: str,
+    action: str,
+    request_hash: str,
+) -> dict[str, Any]:
+    """
+    Atomically consume an approved request for one execution.
+
+    The approval must match the exact capability, target, action,
+    and request fingerprint. Once claimed, its status becomes
+    'executing' so the same approval cannot be reused concurrently.
+    """
+    init_approvals_table()
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT *
+                FROM approvals
+                WHERE id = %s
+                FOR UPDATE;
+                """,
+                (approval_id,),
+            )
+
+            row = cur.fetchone()
+
+            if not row:
+                raise ValueError(
+                    f"Unknown approval id: {approval_id}"
+                )
+
+            approval = dict(row)
+
+            if approval.get("status") != "approved":
+                raise ValueError(
+                    "Approval is not in approved state. "
+                    f"Current status: {approval.get('status')}"
+                )
+
+            if approval.get("tool_name") != tool_name:
+                raise ValueError(
+                    "Approval tool does not match request."
+                )
+
+            if approval.get("target") != target:
+                raise ValueError(
+                    "Approval target does not match request."
+                )
+
+            if approval.get("action") != action:
+                raise ValueError(
+                    "Approval action does not match request."
+                )
+
+            permission = approval.get("permission") or {}
+
+            if permission.get("request_hash") != request_hash:
+                raise ValueError(
+                    "Approval request fingerprint does not match."
+                )
+
+            cur.execute(
+                """
+                UPDATE approvals
+                SET status = 'executing'
+                WHERE id = %s
+                RETURNING *;
+                """,
+                (approval_id,),
+            )
+
+            claimed = cur.fetchone()
+
+        conn.commit()
+
+    return dict(claimed)
+
+
+
+def decide_pending_approval(
+    approval_id: str,
+    status: str,
+    result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Atomically transition one pending approval to approved or denied.
+
+    Existing executed, executing, failed, denied, or approved records
+    cannot be moved backward into another decision state.
+    """
+    init_approvals_table()
+
+    if status not in {
+        "approved",
+        "denied",
+    }:
+        raise ValueError(
+            "status must be approved or denied"
+        )
+
+    result = result or {}
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE approvals
+                SET status = %s,
+                    result = %s::jsonb,
+                    decided_at = NOW()
+                WHERE id = %s
+                  AND status = 'pending'
+                RETURNING *;
+                """,
+                (
+                    status,
+                    json.dumps(result),
+                    approval_id,
+                ),
+            )
+
+            row = cur.fetchone()
+
+        conn.commit()
+
+    if row:
+        return dict(row)
+
+    existing = get_approval(
+        approval_id
+    )
+
+    if not existing:
+        raise ValueError(
+            f"Unknown approval id: {approval_id}"
+        )
+
+    raise ValueError(
+        "Approval is not pending. "
+        f"Current status: {existing.get('status')}"
+    )

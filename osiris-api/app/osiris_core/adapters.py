@@ -9,6 +9,7 @@ from threading import RLock
 from time import monotonic
 from typing import Any, Callable
 
+from .authorization import AuthorizationGateway
 from .capabilities import (
     CapabilityRegistry,
     CapabilityState,
@@ -26,6 +27,7 @@ class CapabilityResult:
     result: Any = None
     error: dict[str, str] | None = None
     duration_ms: float = 0.0
+    authorization: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -93,9 +95,15 @@ class AdapterRegistry:
         self,
         capabilities: CapabilityRegistry,
         events: EventBus,
+        authorization: AuthorizationGateway | None = None,
     ) -> None:
         self._capabilities = capabilities
         self._events = events
+        self._authorization = (
+            authorization
+            if authorization is not None
+            else AuthorizationGateway(capabilities)
+        )
         self._items: dict[str, FunctionAdapter] = {}
         self._lock = RLock()
 
@@ -116,20 +124,6 @@ class AdapterRegistry:
             CapabilityState.UNAVAILABLE,
             CapabilityState.DISABLED,
         }:
-            return False
-
-        # Phase 2C must never auto-activate approval-gated capabilities.
-        if capability.requires_approval:
-            self._capabilities.set_state(
-                adapter.capability_id,
-                CapabilityState.REGISTERED,
-                metadata={
-                    "adapter_state": "approval_required",
-                    "adapter_target": (
-                        f"{adapter.module_name}.{adapter.function_name}"
-                    ),
-                },
-            )
             return False
 
         valid, validation = adapter.validate()
@@ -167,6 +161,9 @@ class AdapterRegistry:
                 "adapter_target": (
                     f"{adapter.module_name}.{adapter.function_name}"
                 ),
+                "authorization_required": (
+                    capability.requires_approval
+                ),
             },
         )
 
@@ -189,10 +186,15 @@ class AdapterRegistry:
         self,
         capability_id: str,
         payload: dict[str, Any] | None = None,
+        *,
+        approval_id: str | None = None,
     ) -> CapabilityResult:
         started = monotonic()
+        request_payload = dict(payload or {})
 
-        capability = self._capabilities.get(capability_id)
+        capability = self._capabilities.get(
+            capability_id
+        )
 
         if capability is None:
             return self._failure(
@@ -202,23 +204,20 @@ class AdapterRegistry:
                 "Capability is not registered.",
             )
 
-        if capability.requires_approval:
-            return self._failure(
-                capability_id,
-                started,
-                "ApprovalRequired",
-                "Capability requires approval and cannot execute directly.",
-            )
-
         if capability.state != CapabilityState.AVAILABLE:
             return self._failure(
                 capability_id,
                 started,
                 "CapabilityUnavailable",
-                f"Capability state is {capability.state.value}.",
+                (
+                    "Capability state is "
+                    f"{capability.state.value}."
+                ),
             )
 
-        adapter = self.get(capability_id)
+        adapter = self.get(
+            capability_id
+        )
 
         if adapter is None:
             return self._failure(
@@ -229,9 +228,88 @@ class AdapterRegistry:
             )
 
         try:
-            result = await adapter.invoke(dict(payload or {}))
+            decision = self._authorization.authorize(
+                capability_id,
+                request_payload,
+                approval_id=approval_id,
+            )
         except Exception as exc:
-            duration = round((monotonic() - started) * 1000, 3)
+            return self._failure(
+                capability_id,
+                started,
+                "AuthorizationError",
+                (
+                    "Authorization failed: "
+                    f"{type(exc).__name__}"
+                ),
+            )
+
+        authorization = decision.as_dict()
+
+        if not decision.allowed:
+            if (
+                decision.requires_approval
+                and decision.approval_status == "pending"
+            ):
+                error_type = "ApprovalRequired"
+            else:
+                error_type = "AuthorizationDenied"
+
+            return self._failure(
+                capability_id,
+                started,
+                error_type,
+                decision.reason,
+                authorization=authorization,
+            )
+
+        try:
+            result = await adapter.invoke(
+                request_payload
+            )
+
+        except Exception as exc:
+            final_authorization = dict(
+                authorization
+            )
+
+            try:
+                completed = self._authorization.complete(
+                    decision,
+                    success=False,
+                    result={
+                        "capability_id": capability_id,
+                        "success": False,
+                        "error_type": type(exc).__name__,
+                        "message": str(exc),
+                    },
+                )
+
+                if completed:
+                    final_authorization[
+                        "approval_status"
+                    ] = completed.get(
+                        "status"
+                    )
+
+            except Exception as completion_exc:
+                self._events.publish(
+                    EventType.SYSTEM_ERROR,
+                    source="authorization",
+                    payload={
+                        "operation": (
+                            "complete_failed_execution"
+                        ),
+                        "error_type": type(
+                            completion_exc
+                        ).__name__,
+                    },
+                )
+
+            duration = round(
+                (monotonic() - started) * 1000,
+                3,
+            )
 
             self._events.publish(
                 EventType.CAPABILITY_FAILED,
@@ -250,9 +328,81 @@ class AdapterRegistry:
                     "message": str(exc),
                 },
                 duration_ms=duration,
+                authorization=final_authorization,
             )
 
-        duration = round((monotonic() - started) * 1000, 3)
+        final_authorization = dict(
+            authorization
+        )
+
+        try:
+            completed = self._authorization.complete(
+                decision,
+                success=True,
+                result={
+                    "capability_id": capability_id,
+                    "success": True,
+                },
+            )
+
+            if completed:
+                final_authorization[
+                    "approval_status"
+                ] = completed.get(
+                    "status"
+                )
+
+        except Exception as completion_exc:
+            duration = round(
+                (monotonic() - started) * 1000,
+                3,
+            )
+
+            self._events.publish(
+                EventType.SYSTEM_ERROR,
+                source="authorization",
+                payload={
+                    "operation": (
+                        "complete_successful_execution"
+                    ),
+                    "error_type": type(
+                        completion_exc
+                    ).__name__,
+                },
+            )
+
+            self._events.publish(
+                EventType.CAPABILITY_EXECUTED,
+                source=capability_id,
+                payload={
+                    "duration_ms": duration,
+                    "approval_ledger_complete": False,
+                },
+            )
+
+            return CapabilityResult(
+                capability_id=capability_id,
+                success=False,
+                result=result,
+                error={
+                    "type": (
+                        "AuthorizationCompletionError"
+                    ),
+                    "message": (
+                        "Capability executed, but the "
+                        "approval ledger could not be "
+                        "completed. Do not retry "
+                        "automatically."
+                    ),
+                },
+                duration_ms=duration,
+                authorization=final_authorization,
+            )
+
+        duration = round(
+            (monotonic() - started) * 1000,
+            3,
+        )
 
         self._events.publish(
             EventType.CAPABILITY_EXECUTED,
@@ -268,6 +418,7 @@ class AdapterRegistry:
             result=result,
             error=None,
             duration_ms=duration,
+            authorization=final_authorization,
         )
 
     def _failure(
@@ -276,8 +427,13 @@ class AdapterRegistry:
         started: float,
         error_type: str,
         message: str,
+        *,
+        authorization: dict[str, Any] | None = None,
     ) -> CapabilityResult:
-        duration = round((monotonic() - started) * 1000, 3)
+        duration = round(
+            (monotonic() - started) * 1000,
+            3,
+        )
 
         self._events.publish(
             EventType.CAPABILITY_FAILED,
@@ -296,6 +452,7 @@ class AdapterRegistry:
                 "message": message,
             },
             duration_ms=duration,
+            authorization=authorization,
         )
 
 
@@ -396,6 +553,40 @@ def _run_reasoning(
     return build_reasoning_plan(goal)
 
 
+async def _run_agent_execution(
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    from reasoner import run_reasoning_loop
+
+    goal = _require_string(
+        payload,
+        "goal",
+    )
+
+    max_rounds = payload.get(
+        "max_rounds",
+        3,
+    )
+
+    if (
+        isinstance(max_rounds, bool)
+        or not isinstance(max_rounds, int)
+    ):
+        raise ValueError(
+            "max_rounds must be an integer"
+        )
+
+    if not 1 <= max_rounds <= 3:
+        raise ValueError(
+            "max_rounds must be between 1 and 3"
+        )
+
+    return await run_reasoning_loop(
+        goal,
+        max_rounds=max_rounds,
+    )
+
+
 async def _run_system_monitoring(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
@@ -428,6 +619,13 @@ def install_phase2c_adapters(
             module_name="reasoning_planner",
             function_name="build_reasoning_plan",
             runner=_run_reasoning,
+        ),
+        FunctionAdapter(
+            capability_id="intelligence.agent_execution",
+            name="Approved Agent Execution Adapter",
+            module_name="reasoner",
+            function_name="run_reasoning_loop",
+            runner=_run_agent_execution,
         ),
         FunctionAdapter(
             capability_id="system.monitoring",

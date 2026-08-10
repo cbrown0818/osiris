@@ -16,10 +16,23 @@ def _failure_response(
     result: dict[str, Any],
 ) -> dict[str, Any]:
     error = result.get("error") or {}
-    error_type = error.get("type", "CapabilityError")
+    authorization = (
+        result.get("authorization")
+        or {}
+    )
+
+    error_type = error.get(
+        "type",
+        "CapabilityError",
+    )
+
     message = error.get(
         "message",
         "The requested capability could not be executed.",
+    )
+
+    approval_id = authorization.get(
+        "approval_id"
     )
 
     response_type = (
@@ -28,11 +41,24 @@ def _failure_response(
         else "tool_result"
     )
 
+    if (
+        response_type == "approval_required"
+        and approval_id
+    ):
+        message = (
+            f"{message}\n\n"
+            f"Approval ID: {approval_id}\n"
+            "Open Approvals to review and execute "
+            "this exact request."
+        )
+
     return {
         "type": response_type,
         "command": command,
         "answer": message,
         "data": {
+            "approval_id": approval_id,
+            "authorization": authorization,
             "capability_result": result,
         },
     }
