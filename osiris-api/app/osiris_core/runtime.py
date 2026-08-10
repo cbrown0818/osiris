@@ -6,6 +6,10 @@ from threading import RLock
 from time import monotonic
 from typing import Any
 
+from .adapters import (
+    AdapterRegistry,
+    install_phase2c_adapters,
+)
 from .bootstrap import (
     BootstrapReport,
     bootstrap_existing_capabilities,
@@ -43,12 +47,17 @@ class OsirisCore:
 
         self.events = EventBus()
         self.capabilities = CapabilityRegistry(self.events)
+        self.adapters = AdapterRegistry(
+            self.capabilities,
+            self.events,
+        )
         self.tasks = TaskManager(self.events)
 
         self._state = CoreState.CREATED
         self._started_monotonic: float | None = None
         self._started_at: str | None = None
         self._bootstrap_report: BootstrapReport | None = None
+        self._adapter_report: dict[str, Any] | None = None
         self._lock = RLock()
 
     @property
@@ -84,6 +93,10 @@ class OsirisCore:
             bootstrap_existing_capabilities(
                 self.capabilities
             )
+        )
+
+        self._adapter_report = install_phase2c_adapters(
+            self.adapters
         )
 
         now = datetime.now(timezone.utc).isoformat()
@@ -142,9 +155,11 @@ class OsirisCore:
             "started_at": started_at,
             "uptime_seconds": uptime_seconds,
             "capabilities": self.capabilities.count,
+            "adapters": self.adapters.count,
             "tasks": self.tasks.count,
             "events": self.events.count,
             "capability_bootstrap": bootstrap,
+            "adapter_install": self._adapter_report,
         }
 
 

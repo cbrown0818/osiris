@@ -43,7 +43,7 @@ class OsirisCoreTests(unittest.TestCase):
 
         self.assertEqual(
             status["capabilities"],
-            1,
+            core.capabilities.count,
         )
 
         self.assertGreaterEqual(

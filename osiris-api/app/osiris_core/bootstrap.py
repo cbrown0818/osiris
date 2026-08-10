@@ -66,7 +66,8 @@ EXISTING_CAPABILITY_SPECS = (
         ),
         category="intelligence",
         module="reasoner",
-        risk=CapabilityRisk.READ_ONLY,
+        risk=CapabilityRisk.HIGH,
+        requires_approval=True,
     ),
     CapabilitySpec(
         capability_id="intelligence.cognition",

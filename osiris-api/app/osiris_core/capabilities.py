@@ -85,6 +85,40 @@ class CapabilityRegistry:
 
         return capability
 
+    def set_state(
+        self,
+        capability_id: str,
+        state: CapabilityState,
+        *,
+        metadata: dict[str, Any] | None = None,
+    ) -> Capability:
+        with self._lock:
+            capability = self._items.get(capability_id)
+
+            if capability is None:
+                raise KeyError(
+                    f"Capability not registered: {capability_id}"
+                )
+
+            previous_state = capability.state
+            capability.state = state
+
+            if metadata:
+                capability.metadata.update(metadata)
+
+        if previous_state != state:
+            self._events.publish(
+                EventType.CAPABILITY_STATE_CHANGED,
+                source=capability_id,
+                payload={
+                    "capability_id": capability_id,
+                    "previous_state": previous_state.value,
+                    "state": state.value,
+                },
+            )
+
+        return capability
+
     def get(self, capability_id: str) -> Capability | None:
         with self._lock:
             return self._items.get(capability_id)

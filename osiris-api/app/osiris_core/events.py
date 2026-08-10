@@ -16,6 +16,9 @@ class EventType(str, Enum):
     CORE_STOPPED = "core.stopped"
 
     CAPABILITY_REGISTERED = "capability.registered"
+    CAPABILITY_STATE_CHANGED = "capability.state_changed"
+    CAPABILITY_EXECUTED = "capability.executed"
+    CAPABILITY_FAILED = "capability.failed"
 
     TASK_CREATED = "task.created"
     TASK_STATE_CHANGED = "task.state_changed"
