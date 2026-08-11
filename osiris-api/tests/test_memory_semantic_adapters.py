@@ -545,6 +545,35 @@ class QdrantMemoryVectorStoreTests(
             1,
         )
 
+    async def test_cached_collection_is_rechecked_if_deleted(
+        self,
+    ):
+        await self.store.upsert(
+            collection="synthetic_collection",
+            point_id="memory-1",
+            vector=[0.1, 0.2, 0.3],
+            payload={},
+        )
+
+        self.assertEqual(
+            len(self.client.create_calls),
+            1,
+        )
+
+        self.client.collection_exists_result = False
+
+        await self.store.upsert(
+            collection="synthetic_collection",
+            point_id="memory-2",
+            vector=[0.1, 0.2, 0.3],
+            payload={},
+        )
+
+        self.assertEqual(
+            len(self.client.create_calls),
+            2,
+        )
+
     async def test_delete_removes_point(self):
         await self.store.delete(
             collection="synthetic_collection",

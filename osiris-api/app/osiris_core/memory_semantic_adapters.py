@@ -371,14 +371,14 @@ class QdrantMemoryVectorStore:
             collection
         )
 
-        if known_size is not None:
-            if known_size != vector_size:
-                raise MemorySemanticIndexError(
-                    "embedding vector dimension "
-                    "changed for existing collection"
-                )
-
-            return
+        if (
+            known_size is not None
+            and known_size != vector_size
+        ):
+            raise MemorySemanticIndexError(
+                "embedding vector dimension "
+                "changed for existing collection"
+            )
 
         exists = await self._collection_exists(
             collection
