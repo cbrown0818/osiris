@@ -739,3 +739,120 @@ class MemoryRepositoryTests(
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SyntheticUniqueViolation(Exception):
+    sqlstate = "23505"
+    constraint_name = (
+        "uq_osiris_memory_active_fingerprint"
+    )
+
+
+class SyntheticOtherUniqueViolation(Exception):
+    sqlstate = "23505"
+    constraint_name = "some_other_constraint"
+
+
+class DuplicateConnection:
+    def __init__(
+        self,
+        exception,
+    ):
+        self.exception = exception
+        self.closed = False
+
+    async def fetchrow(
+        self,
+        sql,
+        *args,
+    ):
+        raise self.exception
+
+    async def close(
+        self,
+    ):
+        self.closed = True
+
+
+class MemoryRepositoryDuplicateTests(
+    unittest.IsolatedAsyncioTestCase
+):
+    async def test_active_fingerprint_violation_is_translated(
+        self,
+    ):
+        from osiris_core.memory_repository import (
+            MemoryDuplicateError,
+        )
+
+        record = MemoryRecord.new(
+            kind=MemoryKind.SEMANTIC,
+            content=(
+                "Synthetic concurrent "
+                "duplicate."
+            ),
+        )
+
+        connection = DuplicateConnection(
+            SyntheticUniqueViolation()
+        )
+
+        async def connect(_):
+            return connection
+
+        repository = (
+            PostgresMemoryRepository(
+                database_url=(
+                    "synthetic://memory"
+                ),
+                connect=connect,
+            )
+        )
+
+        with self.assertRaises(
+            MemoryDuplicateError
+        ):
+            await repository.create(
+                record
+            )
+
+        self.assertTrue(
+            connection.closed
+        )
+
+    async def test_other_unique_violation_is_not_misclassified(
+        self,
+    ):
+        record = MemoryRecord.new(
+            kind=MemoryKind.SEMANTIC,
+            content=(
+                "Synthetic unrelated "
+                "constraint."
+            ),
+        )
+
+        connection = DuplicateConnection(
+            SyntheticOtherUniqueViolation()
+        )
+
+        async def connect(_):
+            return connection
+
+        repository = (
+            PostgresMemoryRepository(
+                database_url=(
+                    "synthetic://memory"
+                ),
+                connect=connect,
+            )
+        )
+
+        with self.assertRaises(
+            SyntheticOtherUniqueViolation
+        ):
+            await repository.create(
+                record
+            )
+
+        self.assertTrue(
+            connection.closed
+        )

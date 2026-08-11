@@ -106,3 +106,57 @@ class MemorySchemaTests(
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ActiveFingerprintConcurrencySchemaTests(
+    unittest.TestCase
+):
+    def setUp(self):
+        migration_path = (
+            Path(__file__).resolve().parents[1]
+            / "db"
+            / "migrations"
+            / "002_active_memory_fingerprint_unique.sql"
+        )
+
+        self.sql = migration_path.read_text()
+
+    def test_active_fingerprint_unique_index_exists(self):
+        self.assertIn(
+            "CREATE UNIQUE INDEX IF NOT EXISTS",
+            self.sql,
+        )
+
+        self.assertIn(
+            "uq_osiris_memory_active_fingerprint",
+            self.sql,
+        )
+
+        self.assertIn(
+            "fingerprint",
+            self.sql,
+        )
+
+        self.assertIn(
+            "WHERE status = 'active'",
+            self.sql,
+        )
+
+    def test_active_fingerprint_migration_is_non_destructive(self):
+        upper = self.sql.upper()
+
+        for forbidden in (
+            "DROP ",
+            "TRUNCATE ",
+            "DELETE FROM",
+        ):
+            self.assertNotIn(
+                forbidden,
+                upper,
+            )
+
+    def test_active_fingerprint_migration_is_tracked(self):
+        self.assertIn(
+            "002_active_memory_fingerprint_unique",
+            self.sql,
+        )

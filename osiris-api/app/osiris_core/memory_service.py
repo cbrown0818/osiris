@@ -13,6 +13,8 @@ from .memory_models import (
     MemoryStatus,
 )
 from .memory_repository import (
+    MemoryDuplicateError,
+    MemoryRepositoryError,
     PostgresMemoryRepository,
 )
 from .memory_resolution import (
@@ -264,11 +266,52 @@ class CanonicalMemoryService:
             resolution.resolution
             == MemoryResolutionType.DISTINCT
         ):
-            stored = (
-                await self._repository.create(
-                    record
+            try:
+                stored = (
+                    await self._repository.create(
+                        record
+                    )
                 )
-            )
+            except MemoryDuplicateError:
+                concurrent_duplicates = (
+                    await self._repository
+                    .find_by_fingerprint(
+                        record.fingerprint,
+                        status=(
+                            MemoryStatus.ACTIVE
+                        ),
+                        limit=1,
+                    )
+                )
+
+                if not concurrent_duplicates:
+                    raise MemoryRepositoryError(
+                        "duplicate constraint "
+                        "was raised but no active "
+                        "canonical winner could "
+                        "be read"
+                    )
+
+                duplicate = (
+                    concurrent_duplicates[0]
+                )
+
+                duplicate_resolution = (
+                    self._resolution_policy
+                    .compare(
+                        record,
+                        duplicate,
+                        resolution_context,
+                    )
+                )
+
+                return MemoryServiceResult(
+                    decision=decision,
+                    duplicate=duplicate,
+                    resolution=(
+                        duplicate_resolution
+                    ),
+                )
 
             return MemoryServiceResult(
                 decision=decision,

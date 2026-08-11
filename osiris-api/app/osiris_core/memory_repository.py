@@ -45,6 +45,47 @@ class MemoryStateConflictError(
     """Requested memory lifecycle change is invalid."""
 
 
+class MemoryDuplicateError(
+    MemoryRepositoryError
+):
+    """Active canonical fingerprint already exists."""
+
+
+_ACTIVE_FINGERPRINT_UNIQUE_INDEX = (
+    "uq_osiris_memory_active_fingerprint"
+)
+
+
+def _is_active_fingerprint_duplicate(
+    exc: Exception,
+) -> bool:
+    sqlstate = getattr(
+        exc,
+        "sqlstate",
+        None,
+    )
+
+    constraint_name = getattr(
+        exc,
+        "constraint_name",
+        None,
+    )
+
+    if sqlstate != "23505":
+        return False
+
+    if (
+        constraint_name
+        == _ACTIVE_FINGERPRINT_UNIQUE_INDEX
+    ):
+        return True
+
+    return (
+        _ACTIVE_FINGERPRINT_UNIQUE_INDEX
+        in str(exc)
+    )
+
+
 _MEMORY_COLUMNS = """
 id,
 kind,
@@ -270,29 +311,41 @@ class PostgresMemoryRepository:
             {_MEMORY_COLUMNS};
         """
 
-        row = await connection.fetchrow(
-            sql,
-            data["id"],
-            data["kind"],
-            data["content"],
-            data["title"],
-            data["status"],
-            data["source_type"],
-            data["source_ref"],
-            data["confidence"],
-            data["importance"],
-            data["sensitivity"],
-            data["retention"],
-            data["subject_entity_id"],
-            data["superseded_by_id"],
-            data["created_at"],
-            data["updated_at"],
-            data["observed_at"],
-            data["valid_from"],
-            data["valid_until"],
-            metadata_json,
-            data["fingerprint"],
-        )
+        try:
+            row = await connection.fetchrow(
+                sql,
+                data["id"],
+                data["kind"],
+                data["content"],
+                data["title"],
+                data["status"],
+                data["source_type"],
+                data["source_ref"],
+                data["confidence"],
+                data["importance"],
+                data["sensitivity"],
+                data["retention"],
+                data["subject_entity_id"],
+                data["superseded_by_id"],
+                data["created_at"],
+                data["updated_at"],
+                data["observed_at"],
+                data["valid_from"],
+                data["valid_until"],
+                metadata_json,
+                data["fingerprint"],
+            )
+        except Exception as exc:
+            if _is_active_fingerprint_duplicate(
+                exc
+            ):
+                raise MemoryDuplicateError(
+                    "active canonical memory "
+                    "with this fingerprint "
+                    "already exists"
+                ) from exc
+
+            raise
 
         if row is None:
             raise MemoryRepositoryError(

@@ -12,6 +12,8 @@ from osiris_core.memory_models import (
     MemoryStatus,
 )
 from osiris_core.memory_repository import (
+    MemoryDuplicateError,
+    MemoryRepositoryError,
     PostgresMemoryRepository,
 )
 from osiris_core.memory_resolution import (
@@ -41,6 +43,9 @@ class FakeRepository(
         self.duplicates = []
         self.active_records = []
 
+        self.create_exception = None
+        self.duplicates_after_create_race = []
+
     async def find_by_fingerprint(
         self,
         fingerprint,
@@ -55,6 +60,15 @@ class FakeRepository(
                 "limit": limit,
             }
         )
+
+        if (
+            self.create_exception
+            is not None
+            and len(self.find_calls) > 1
+        ):
+            return list(
+                self.duplicates_after_create_race
+            )
 
         return list(
             self.duplicates
@@ -88,6 +102,9 @@ class FakeRepository(
         self.create_calls.append(
             record
         )
+
+        if self.create_exception is not None:
+            raise self.create_exception
 
         return record
 
@@ -566,6 +583,99 @@ class MemoryServiceTests(
             result.written
         )
 
+
+    async def test_create_race_returns_concurrent_winner(
+        self,
+    ):
+        candidate = self.record(
+            subject_entity_id=(
+                "synthetic:race"
+            ),
+        )
+
+        winner = self.record(
+            content=candidate.content,
+            subject_entity_id=(
+                "synthetic:race"
+            ),
+        )
+
+        self.repository.create_exception = (
+            MemoryDuplicateError(
+                "synthetic duplicate race"
+            )
+        )
+
+        self.repository.duplicates_after_create_race = [
+            winner
+        ]
+
+        result = await self.service.admit(
+            candidate,
+            self.user_context(),
+        )
+
+        self.assertFalse(
+            result.written
+        )
+
+        self.assertTrue(
+            result.duplicate_found
+        )
+
+        self.assertEqual(
+            result.duplicate,
+            winner,
+        )
+
+        self.assertEqual(
+            result.resolution.resolution,
+            MemoryResolutionType.EXACT_DUPLICATE,
+        )
+
+        self.assertEqual(
+            len(
+                self.repository.find_calls
+            ),
+            2,
+        )
+
+        self.assertEqual(
+            len(
+                self.repository.create_calls
+            ),
+            1,
+        )
+
+    async def test_create_race_without_winner_raises(
+        self,
+    ):
+        candidate = self.record(
+            subject_entity_id=(
+                "synthetic:missing-winner"
+            ),
+        )
+
+        self.repository.create_exception = (
+            MemoryDuplicateError(
+                "synthetic duplicate race"
+            )
+        )
+
+        with self.assertRaises(
+            MemoryRepositoryError
+        ):
+            await self.service.admit(
+                candidate,
+                self.user_context(),
+            )
+
+        self.assertEqual(
+            len(
+                self.repository.find_calls
+            ),
+            2,
+        )
 
 if __name__ == "__main__":
     unittest.main()
